@@ -80,6 +80,31 @@ Selesai, status sesi bakal `CONNECTED`. Kalau API Key di settings kosong, fetch 
 sudo cat /root/.ptopup-waotp-key
 ```
 
+### ⚡ CLI Shortcuts (auto-installed)
+
+Setelah deploy, shortcut command tersedia system-wide. **Re-login dulu** ke SSH (atau jalanin `source /etc/profile.d/ptopup.sh`), lalu:
+
+| Alias | Apa yang dilakuin |
+|---|---|
+| `ptopup-status` | Lihat semua PM2 process |
+| `ptopup-logs` | Tail log Next.js (50 baris terakhir) |
+| `ptopup-restart` | Restart app utama |
+| `ptopup-update` | Run script update (pull + build + restart) |
+| `ptopup-db` | Login MySQL ke DB ptopup |
+| `wa-status` | Detail PM2 wa-worker |
+| `wa-logs` | Tail log Baileys worker |
+| `wa-restart` | Restart wa-worker (sesi WA tetap utuh) |
+| `wa-key` | Print API key worker |
+| `ptopup-help` | Tampilan menu lengkap |
+
+Contoh penggunaan:
+```bash
+ssh root@vps
+ptopup-status     # langsung muncul list pm2
+wa-logs           # tail log wa-worker
+ptopup-update     # update code dari GitHub
+```
+
 ---
 
 ## 🧹 2. CLEANUP (Hapus Semua, Mau Pasang Ulang)

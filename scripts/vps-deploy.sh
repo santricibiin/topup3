@@ -68,7 +68,7 @@ NODE_VERSION="20"
 # ============================================================
 # STEP 0 — Pre-flight (RAM check, auto-swap)
 # ============================================================
-step "0/10 — Pre-flight check"
+step "0/11 — Pre-flight check"
 
 # Auto-create swap kalau total RAM < 2 GB (cegah build OOM)
 RAM_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
@@ -99,7 +99,7 @@ ok "Disk free: ${DISK_FREE_GB} GB"
 # ============================================================
 # STEP 1 — System packages
 # ============================================================
-step "1/10 — Install system packages"
+step "1/11 — Install system packages"
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
@@ -155,7 +155,7 @@ chmod +x /usr/bin/pm2 2>/dev/null || true
 # ============================================================
 # STEP 2 — App user & directory
 # ============================================================
-step "2/10 — Setup app user"
+step "2/11 — Setup app user"
 
 if ! id "$APP_USER" >/dev/null 2>&1; then
   # FIX: useradd dengan shell /bin/bash (default useradd kadang nologin di Ubuntu minimal)
@@ -178,7 +178,7 @@ fi
 # ============================================================
 # STEP 3 — Get application code
 # ============================================================
-step "3/10 — Get application code"
+step "3/11 — Get application code"
 
 if [[ -n "$REPO" ]]; then
   # Inject token ke URL kalau ada (repo private)
@@ -225,7 +225,7 @@ fi
 # ============================================================
 # STEP 4 — MySQL database
 # ============================================================
-step "4/10 — Setup MySQL"
+step "4/11 — Setup MySQL"
 
 if [[ $SKIP_MYSQL -eq 0 ]]; then
   DB_PASS_FILE="/root/.ptopup-db-password"
@@ -253,7 +253,7 @@ fi
 # ============================================================
 # STEP 5 — .env
 # ============================================================
-step "5/10 — Configure .env"
+step "5/11 — Configure .env"
 
 ENV_FILE="$APP_DIR/.env"
 
@@ -299,7 +299,7 @@ fi
 # ============================================================
 # STEP 6 — Install + DB push + build
 # ============================================================
-step "6/10 — Install dependencies"
+step "6/11 — Install dependencies"
 
 # FIX: ensure ownership benar sebelum install
 chown -R $APP_USER:$APP_USER "$APP_DIR"
@@ -313,7 +313,7 @@ sudo -u $APP_USER bash -lc "cd $APP_DIR && npx prisma generate >/dev/null 2>&1 &
 ok "Schema synced"
 
 # FIX: build dengan memory limit untuk VPS RAM kecil
-step "7/10 — Build Next.js production"
+step "7/11 — Build Next.js production"
 log "Building (5-10 menit, sabar)..."
 sudo -u $APP_USER bash -lc "cd $APP_DIR && NODE_OPTIONS='--max-old-space-size=1536' npm run build" 2>&1 | tail -10 || {
   err "Build failed. Cek log di atas. Common fix:
@@ -326,7 +326,7 @@ ok "Build complete"
 # ============================================================
 # STEP 8 — Seed admin + folder
 # ============================================================
-step "8/10 — Seed admin user"
+step "8/11 — Seed admin user"
 
 mkdir -p "$APP_DIR/public/uploads/avatars"
 chown -R $APP_USER:$APP_USER "$APP_DIR/public/uploads"
@@ -367,7 +367,7 @@ ok "Admin user ready (admin / Admin#12345)"
 # ============================================================
 # STEP 9 — PM2 + Nginx + SSL
 # ============================================================
-step "9/10 — Setup PM2 + Nginx + SSL"
+step "9/11 — Setup PM2 + Nginx + SSL"
 
 # FIX: pastikan pm2 home folder permission benar (kadang bekas run gagal)
 [[ -d /home/$APP_USER/.pm2 ]] && {
@@ -443,7 +443,7 @@ fi
 # ============================================================
 # STEP 10 — WA OTP Worker (Baileys, port 3002)
 # ============================================================
-step "10/10 — Setup WA OTP Worker"
+step "10/11 — Setup WA OTP Worker"
 
 WA_DIR="$APP_DIR/wa-worker"
 WA_ENV="$WA_DIR/.env"
@@ -539,6 +539,62 @@ SQL
 fi
 
 # ============================================================
+# STEP 11 — Install shortcut aliases (system-wide)
+# ============================================================
+step "11/11 — Install shortcut aliases"
+
+ALIAS_FILE="/etc/profile.d/ptopup.sh"
+
+cat > "$ALIAS_FILE" <<'EOF'
+# PTopup CLI shortcuts — auto-installed by vps-deploy.sh
+# Loaded otomatis di shell login (root + semua user). Re-login untuk aktif,
+# atau jalanin: source /etc/profile.d/ptopup.sh
+
+# ---- App utama (Next.js, port 3000) ----
+alias ptopup-status='sudo -u ptopup pm2 status'
+alias ptopup-logs='sudo -u ptopup pm2 logs ptopup --lines 50'
+alias ptopup-restart='sudo -u ptopup pm2 restart ptopup'
+alias ptopup-update='sudo bash /opt/ptopup/scripts/vps-update.sh'
+alias ptopup-db='sudo mysql ptopup'
+
+# ---- WA OTP Worker (Baileys, port 3002) ----
+alias wa-status='sudo -u ptopup pm2 describe wa-worker | head -30'
+alias wa-logs='sudo -u ptopup pm2 logs wa-worker --lines 50'
+alias wa-restart='sudo -u ptopup pm2 restart wa-worker'
+alias wa-key='sudo cat /root/.ptopup-waotp-key && echo'
+
+# ---- Helper info ----
+ptopup-help() {
+  cat <<HELP
+PTopup CLI shortcuts:
+
+  App utama (ptopup):
+    ptopup-status     Lihat semua PM2 process
+    ptopup-logs       Tail log Next.js (50 baris terakhir)
+    ptopup-restart    Restart app Next.js
+    ptopup-update     Run update script (pull + build + restart)
+    ptopup-db         Login MySQL ke DB ptopup
+
+  WA OTP Worker:
+    wa-status         Detail PM2 wa-worker
+    wa-logs           Tail log Baileys worker
+    wa-restart        Restart wa-worker (sesi WA tetap utuh)
+    wa-key            Print API key worker
+
+  Lainnya:
+    ptopup-help       Tampilan menu ini
+HELP
+}
+EOF
+
+chmod 644 "$ALIAS_FILE"
+ok "Aliases installed at $ALIAS_FILE"
+
+# Auto-load di session sekarang juga (selain harus re-login)
+# shellcheck disable=SC1090
+source "$ALIAS_FILE" 2>/dev/null || true
+
+# ============================================================
 # DONE
 # ============================================================
 echo ""
@@ -614,4 +670,21 @@ echo -e "  Logs         : ${BLUE}sudo -u $APP_USER pm2 logs ptopup${NC}"
 echo -e "  Restart      : ${BLUE}sudo -u $APP_USER pm2 restart ptopup${NC}"
 echo -e "  Update code  : ${BLUE}sudo bash $APP_DIR/scripts/vps-update.sh${NC}"
 echo -e "  Pull only    : ${BLUE}cd $APP_DIR && sudo -u $APP_USER git fetch origin && sudo -u $APP_USER git reset --hard origin/main${NC}"
+echo ""
+
+# ─── ALIASES INFO ───────────────────────────────────────────
+echo -e "${YELLOW}═══ CLI SHORTCUTS (auto-installed) ═══${NC}"
+echo -e "  Re-login dulu (atau ${BLUE}source /etc/profile.d/ptopup.sh${NC}) buat aktivasi."
+echo -e "  Lalu cukup ketik:"
+echo ""
+echo -e "    ${GREEN}ptopup-status${NC}      — list PM2 process"
+echo -e "    ${GREEN}ptopup-logs${NC}        — tail log Next.js"
+echo -e "    ${GREEN}ptopup-restart${NC}     — restart app"
+echo -e "    ${GREEN}ptopup-update${NC}      — pull + build + restart"
+echo -e "    ${GREEN}ptopup-db${NC}          — login MySQL"
+echo -e "    ${GREEN}wa-status${NC}          — detail wa-worker"
+echo -e "    ${GREEN}wa-logs${NC}            — tail log worker"
+echo -e "    ${GREEN}wa-restart${NC}         — restart wa-worker"
+echo -e "    ${GREEN}wa-key${NC}             — print API key worker"
+echo -e "    ${GREEN}ptopup-help${NC}        — tampilan menu lengkap"
 echo ""

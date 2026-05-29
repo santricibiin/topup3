@@ -167,6 +167,10 @@ fi
 [[ -f "$DB_PASS_FILE" ]] && rm -f "$DB_PASS_FILE" && ok "Removed $DB_PASS_FILE"
 [[ -f "$WA_KEY_FILE" ]] && rm -f "$WA_KEY_FILE" && ok "Removed $WA_KEY_FILE"
 
+# Hapus alias file (system-wide shortcuts)
+ALIAS_FILE="/etc/profile.d/ptopup.sh"
+[[ -f "$ALIAS_FILE" ]] && rm -f "$ALIAS_FILE" && ok "Removed $ALIAS_FILE"
+
 # ============================================================
 # 4. Hapus Nginx config
 # ============================================================
