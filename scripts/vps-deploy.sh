@@ -49,7 +49,42 @@ done
   echo "Usage: $0 --domain=<domain> --email=<email> [--repo=<git>] [--token=<gh-pat>] [--no-ssl] [--skip-mysql]"
   exit 1
 }
-[[ $EUID -ne 0 ]] && { echo "ERROR: Harus run dengan sudo (root)."; exit 1; }
+
+# Auto re-exec sebagai root kalau dijalanin user biasa (mis. ubuntu@vps).
+# Jadi kamu bisa pakai `bash vps-deploy.sh ...` apa pun login user-nya.
+# `sudo -E` preserve env supaya argumen & variabel dibawa ke root shell.
+if [[ $EUID -ne 0 ]]; then
+  if command -v sudo >/dev/null 2>&1; then
+    echo "[INFO] Bukan root — re-exec lewat sudo..."
+    exec sudo -E bash "$0" "$@"
+  else
+    echo "ERROR: Harus root, dan sudo tidak tersedia. Login pakai 'sudo su' atau 'sudo -i' dulu."
+    exit 1
+  fi
+fi
+
+# ----------------------- APT lock helper -----------------------
+# unattended-upgrades / cloud-init / apt-daily timer kadang nge-hold
+# /var/lib/dpkg/lock-frontend di VPS yang baru. Kalau kita hit apt-get
+# saat lock dipegang → fail. Helper ini tunggu sampai lock dilepas
+# (max 5 menit), supaya deploy gak gampang gagal di awal.
+wait_for_apt() {
+  local timeout=300
+  local elapsed=0
+  while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 \
+        || fuser /var/lib/dpkg/lock >/dev/null 2>&1 \
+        || fuser /var/lib/apt/lists/lock >/dev/null 2>&1 \
+        || pgrep -x unattended-upgr >/dev/null 2>&1; do
+    if [ "$elapsed" -ge "$timeout" ]; then
+      echo "[WARN] APT lock masih ditahan setelah ${timeout}s — coba lagi nanti."
+      return 1
+    fi
+    [ "$elapsed" -eq 0 ] && echo "[INFO] Menunggu apt/dpkg lock dilepas (mis. unattended-upgrades)..."
+    sleep 5
+    elapsed=$((elapsed + 5))
+  done
+  return 0
+}
 
 # ----------------------- logging -----------------------
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; BLUE='\033[0;34m'; NC='\033[0m'
@@ -102,7 +137,9 @@ ok "Disk free: ${DISK_FREE_GB} GB"
 step "1/9 — Install system packages"
 
 export DEBIAN_FRONTEND=noninteractive
+wait_for_apt
 apt-get update -qq
+wait_for_apt
 apt-get install -y -qq curl wget git ufw build-essential ca-certificates gnupg openssl
 
 # Node.js 20 LTS
@@ -113,6 +150,7 @@ fi
 if [[ $NODE_OK -eq 0 ]]; then
   log "Installing Node.js ${NODE_VERSION} LTS..."
   curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - >/dev/null 2>&1
+  wait_for_apt
   apt-get install -y -qq nodejs
 fi
 ok "Node.js $(node -v) — npm $(npm -v)"
@@ -124,6 +162,7 @@ chmod 755 /usr/bin/node /usr/bin/npm /usr/bin/npx 2>/dev/null || true
 if [[ $SKIP_MYSQL -eq 0 ]]; then
   if ! command -v mysql >/dev/null; then
     log "Installing MySQL Server..."
+    wait_for_apt
     apt-get install -y -qq mysql-server
     systemctl enable mysql >/dev/null
     systemctl start mysql
@@ -133,6 +172,7 @@ fi
 
 # Nginx
 if ! command -v nginx >/dev/null; then
+  wait_for_apt
   apt-get install -y -qq nginx
   systemctl enable nginx >/dev/null
 fi
@@ -140,6 +180,7 @@ ok "Nginx installed"
 
 # Certbot (kalau perlu SSL)
 if [[ $NO_SSL -eq 0 ]] && ! command -v certbot >/dev/null; then
+  wait_for_apt
   apt-get install -y -qq certbot python3-certbot-nginx
 fi
 [[ $NO_SSL -eq 0 ]] && ok "Certbot installed"
