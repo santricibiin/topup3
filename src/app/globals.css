@@ -1,0 +1,186 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light — putih bersih + slate netral. Aksen tunggal: Emerald (152 76% 40%). */
+    --background: 0 0% 100%;
+    --foreground: 222 22% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 22% 11%;
+
+    --muted: 210 16% 96%;
+    --muted-foreground: 215 12% 42%;
+
+    --border: 215 16% 90%;
+    --input: 215 16% 90%;
+    --ring: 152 76% 40%;
+
+    --primary: 152 76% 36%;
+    --primary-foreground: 0 0% 100%;
+
+    --accent: 210 16% 96%;
+    --accent-foreground: 222 22% 11%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --radius: 0.625rem;
+  }
+
+  .dark {
+    /* Dark — slate gelap dengan kontras tinggi. Aksen tunggal: Emerald terang. */
+    --background: 222 22% 7%;
+    --foreground: 210 20% 96%;
+
+    --card: 222 22% 9%;
+    --card-foreground: 210 20% 96%;
+
+    --muted: 222 18% 14%;
+    --muted-foreground: 215 14% 65%;
+
+    --border: 222 18% 18%;
+    --input: 222 18% 18%;
+    --ring: 152 76% 50%;
+
+    --primary: 152 76% 46%;
+    --primary-foreground: 222 22% 7%;
+
+    --accent: 222 18% 14%;
+    --accent-foreground: 210 20% 96%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-feature-settings: "cv11" 1, "ss01" 1, "ss03" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    letter-spacing: -0.011em;
+    position: relative;
+  }
+
+  /**
+   * Pattern batik Parang Rusak — motif diagonal khas keraton Jawa.
+   * Filosofi: garis kontinyu yg gak pernah putus = simbol perjuangan,
+   * kekuatan, dan kesinambungan. Salah satu motif paling sakral, dulu
+   * cuma boleh dipakai keluarga raja.
+   *
+   * Visual: deretan diagonal "S" yang mengalir, dengan parang kecil
+   * (mlinjon/belah ketupat) di antaranya.
+   */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-color: hsl(var(--primary));
+    opacity: 0.09;
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='140'%20height='140'%20viewBox='0%200%20140%20140'%3E%3Cg%20fill='black'%3E%3C!--%20Parang%20utama%20--%3E%3Cpath%20d='M0%20140%20Q14%20112%2028%20112%20Q42%20112%2042%2098%20Q42%2084%2056%2084%20Q70%2084%2070%2070%20Q70%2056%2084%2056%20Q98%2056%2098%2042%20Q98%2028%20112%2028%20Q126%2028%20140%200%20L140%2014%20Q128%2030%20114%2030%20Q102%2030%20102%2042%20Q102%2058%2088%2058%20Q74%2058%2074%2070%20Q74%2086%2060%2086%20Q46%2086%2046%2098%20Q46%20114%2032%20114%20Q18%20114%206%20136%20Z'/%3E%3C!--%20Mlinjon%20(belah%20ketupat%20kecil)%20--%3E%3Cpath%20d='M70%2070%20l8%20-8%20l8%208%20l-8%208%20Z'%20transform='translate(-35%2035)'/%3E%3Cpath%20d='M70%2070%20l8%20-8%20l8%208%20l-8%208%20Z'%20transform='translate(35%20-35)'/%3E%3C/g%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='140'%20height='140'%20viewBox='0%200%20140%20140'%3E%3Cg%20fill='black'%3E%3Cpath%20d='M0%20140%20Q14%20112%2028%20112%20Q42%20112%2042%2098%20Q42%2084%2056%2084%20Q70%2084%2070%2070%20Q70%2056%2084%2056%20Q98%2056%2098%2042%20Q98%2028%20112%2028%20Q126%2028%20140%200%20L140%2014%20Q128%2030%20114%2030%20Q102%2030%20102%2042%20Q102%2058%2088%2058%20Q74%2058%2074%2070%20Q74%2086%2060%2086%20Q46%2086%2046%2098%20Q46%20114%2032%20114%20Q18%20114%206%20136%20Z'/%3E%3Cpath%20d='M70%2070%20l8%20-8%20l8%208%20l-8%208%20Z'%20transform='translate(-35%2035)'/%3E%3Cpath%20d='M70%2070%20l8%20-8%20l8%208%20l-8%208%20Z'%20transform='translate(35%20-35)'/%3E%3C/g%3E%3C/svg%3E");
+    -webkit-mask-repeat: repeat;
+    mask-repeat: repeat;
+    -webkit-mask-size: 140px 140px;
+    mask-size: 140px 140px;
+  }
+
+  body::after {
+    /* Soft fade di atas/bawah biar pattern gak terlalu padat di edge viewport. */
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(
+      to bottom,
+      hsl(var(--background)) 0%,
+      transparent 14%,
+      transparent 86%,
+      hsl(var(--background)) 100%
+    );
+  }
+
+  .dark body::before {
+    opacity: 0.08;
+  }
+
+  /* Hide scrollbar globally — page tetap scrollable, cuma visualnya bersih */
+  html {
+    scrollbar-width: none;        /* Firefox */
+    -ms-overflow-style: none;     /* IE/Edge legacy */
+  }
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  *::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;                /* Chrome/Safari/Edge */
+  }
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-sans), system-ui, sans-serif;
+    letter-spacing: -0.022em;
+    font-feature-settings: "cv11" 1, "ss01" 1, "ss03" 1;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "cv11" 1;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(to right, hsl(var(--border) / 0.4) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--border) / 0.4) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 75%);
+  }
+
+  /**
+   * Batik Megamendung — motif awan berlapis khas Cirebon.
+   * SVG inline, di-tile, di-fix supaya gak scroll bareng konten.
+   * Pakai stroke primary (emerald) dengan opacity rendah biar subtle.
+   */
+  .batik-bg {
+    background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='240'%20height='120'%20viewBox='0%200%20240%20120'%3E%3Cg%20fill='none'%20stroke='%2310b981'%20stroke-opacity='0.18'%20stroke-width='1.4'%20stroke-linecap='round'%3E%3Cpath%20d='M0%20120%20Q60%200%20120%20120%20Q180%200%20240%20120'/%3E%3Cpath%20d='M0%20120%20Q60%2024%20120%20120%20Q180%2024%20240%20120'/%3E%3Cpath%20d='M0%20120%20Q60%2048%20120%20120%20Q180%2048%20240%20120'/%3E%3Cpath%20d='M0%20120%20Q60%2072%20120%20120%20Q180%2072%20240%20120'/%3E%3Cpath%20d='M0%20120%20Q60%2096%20120%20120%20Q180%2096%20240%20120'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 240px 120px;
+    background-repeat: repeat;
+  }
+
+  /* Versi yg lebih "tebal" — bisa dipakai untuk hero section. */
+  .batik-bg-bold {
+    background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='240'%20height='120'%20viewBox='0%200%20240%20120'%3E%3Cg%20fill='none'%20stroke='%2310b981'%20stroke-opacity='0.28'%20stroke-width='1.6'%20stroke-linecap='round'%3E%3Cpath%20d='M0%20120%20Q60%200%20120%20120%20Q180%200%20240%20120'/%3E%3Cpath%20d='M0%20120%20Q60%2024%20120%20120%20Q180%2024%20240%20120'/%3E%3Cpath%20d='M0%20120%20Q60%2048%20120%20120%20Q180%2048%20240%20120'/%3E%3Cpath%20d='M0%20120%20Q60%2072%20120%20120%20Q180%2072%20240%20120'/%3E%3Cpath%20d='M0%20120%20Q60%2096%20120%20120%20Q180%2096%20240%20120'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 240px 120px;
+    background-repeat: repeat;
+  }
+
+  /* Hilangkan scrollbar pada strip kategori horizontal di hero topup. */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}

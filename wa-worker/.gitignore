@@ -1,0 +1,6 @@
+# Auth state Baileys (jangan commit)
+auth/
+# Logs
+*.log
+# OTP store snapshot kalau dipersist
+otp-store.json

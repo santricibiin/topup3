@@ -1,0 +1,479 @@
+// =========================================================
+// PTOPUP — Prisma Schema (MySQL)
+// Models: User, Balance, Transaction, Product, PaymentGatewayLog
+// Design notes:
+// - All money/saldo fields use Decimal(18, 2) — never Float.
+// - Every status uses enum (no magic strings).
+// - Strict referential integrity, indexed for query speed.
+// - All transaction mutations must be wrapped in prisma.$transaction().
+// =========================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextIndex", "fullTextSearch"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------
+// ENUMS
+// ---------------------------------------------------------
+enum UserRole {
+  USER
+  ADMIN
+  RESELLER
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum ProductCategory {
+  PULSA
+  DATA
+  PLN
+  GAME
+  EWALLET
+  VOUCHER
+  PASCABAYAR
+  STREAMING
+  AKTIVASI_VOUCHER
+  PAKET_SMS_TELPON
+  MASA_AKTIF
+  TV_KABEL
+  GAS
+  BPJS
+  ASURANSI
+  PDAM
+  TRANSPORTASI
+  SEMBAKO
+  OTHER
+}
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+  GANGGUAN
+}
+
+enum TransactionStatus {
+  PENDING        // dibuat, menunggu pembayaran
+  PAID           // pembayaran lunas, antri ke provider
+  PROCESSING     // sudah dikirim ke Digiflazz, menunggu callback
+  SUCCESS        // sukses dari provider
+  FAILED         // gagal di provider (saldo direfund)
+  REFUNDED       // refund manual
+  EXPIRED        // invoice kadaluarsa
+  CANCELLED      // dibatalkan user / sistem
+}
+
+enum PaymentMethod {
+  BALANCE        // bayar pakai saldo internal
+  DUITKU_VA
+  DUITKU_QRIS
+  DUITKU_EWALLET
+  DUITKU_RETAIL
+  DUITKU_OTHER
+}
+
+enum BalanceMutationType {
+  TOPUP          // user isi saldo
+  PURCHASE       // potongan untuk transaksi
+  REFUND         // refund dari transaksi gagal
+  ADJUSTMENT     // koreksi manual admin
+  COMMISSION     // komisi reseller
+}
+
+enum DepositStatus {
+  PENDING
+  SUCCESS
+  EXPIRED
+  CANCELLED
+  FAILED
+}
+
+enum DepositMethod {
+  QRIS
+  DANA
+}
+
+enum GatewayProvider {
+  DIGIFLAZZ
+  DUITKU
+}
+
+enum GatewayLogDirection {
+  REQUEST
+  RESPONSE
+  WEBHOOK
+}
+
+enum OtpPurpose {
+  VERIFY_PHONE     // user verifikasi nomor WA mereka di /profile
+  RESET_PASSWORD   // reset password via WA OTP
+  REGISTER         // verifikasi nomor saat pendaftaran akun baru
+  LOGIN            // (reserved) login pakai OTP
+  CONFIRM_TX       // (reserved) konfirmasi transaksi besar
+}
+
+enum OtpStatus {
+  PENDING
+  SENT
+  VERIFIED
+  EXPIRED
+  FAILED
+}
+
+// ---------------------------------------------------------
+// USER
+// ---------------------------------------------------------
+model User {
+  id            String      @id @default(cuid())
+  email         String      @unique
+  username      String      @unique
+  phone         String?     @unique
+  passwordHash  String      @map("password_hash")
+  fullName      String?     @map("full_name")
+  avatarUrl     String?     @map("avatar_url") @db.VarChar(500)
+  role          UserRole    @default(USER)
+  status        UserStatus  @default(ACTIVE)
+  emailVerified DateTime?   @map("email_verified")
+  // Status verifikasi nomor WhatsApp via OTP gateway. Null = belum verified.
+  phoneVerified DateTime?   @map("phone_verified")
+  lastLoginAt   DateTime?   @map("last_login_at")
+
+  // Relations
+  balance       Balance?
+  mutations     BalanceMutation[]
+  transactions  Transaction[]
+  sessions      Session[]
+  deposits      Deposit[]
+  otpRequests   OtpRequest[]
+
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  @@index([role, status])
+  @@map("users")
+}
+
+// ---------------------------------------------------------
+// SESSION — token-based auth, bisa di-revoke dari sisi server.
+// ---------------------------------------------------------
+model Session {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  token     String   @unique @db.VarChar(128)
+  userAgent String?  @map("user_agent") @db.VarChar(512)
+  ipAddress String?  @map("ip_address") @db.VarChar(64)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+// ---------------------------------------------------------
+// BALANCE — saldo internal user (1:1)
+// Pisah dari User agar update saldo tidak men-trigger
+// re-write seluruh row User dan lebih aman untuk locking row.
+// ---------------------------------------------------------
+model Balance {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  amount    Decimal  @default(0) @db.Decimal(18, 2)
+  // optimistic locking — bump tiap update untuk mencegah race condition
+  version   Int      @default(0)
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("balances")
+}
+
+// ---------------------------------------------------------
+// BALANCE MUTATION — audit trail seluruh perubahan saldo
+// Wajib di-insert di dalam prisma.$transaction() bersama
+// update Balance.amount.
+// ---------------------------------------------------------
+model BalanceMutation {
+  id            String              @id @default(cuid())
+  userId        String              @map("user_id")
+  type          BalanceMutationType
+  amount        Decimal             @db.Decimal(18, 2) // signed: + masuk, - keluar
+  balanceBefore Decimal             @map("balance_before") @db.Decimal(18, 2)
+  balanceAfter  Decimal             @map("balance_after") @db.Decimal(18, 2)
+  description   String?             @db.VarChar(255)
+  referenceId   String?             @map("reference_id") // id transaksi terkait
+  referenceType String?             @map("reference_type") // "TRANSACTION" | "MANUAL" | dst.
+
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime            @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([referenceId])
+  @@map("balance_mutations")
+}
+
+// ---------------------------------------------------------
+// PRODUCT — katalog layanan dari Digiflazz
+// Sinkron via cron / endpoint admin.
+// ---------------------------------------------------------
+model Product {
+  id              String          @id @default(cuid())
+  // Kode unik dari Digiflazz (buyer_sku_code)
+  sku             String          @unique @db.VarChar(64)
+  name            String          @db.VarChar(160)
+  brand           String          @db.VarChar(64)
+  category        ProductCategory
+  type            String          @db.VarChar(64) // contoh: "Umum", "Diamond", "Mobile Legends"
+  description     String?         @db.Text
+
+  // Harga
+  basePrice       Decimal         @map("base_price") @db.Decimal(18, 2)   // dari Digiflazz
+  sellPrice       Decimal         @map("sell_price") @db.Decimal(18, 2)   // harga ke user
+  resellerPrice   Decimal?        @map("reseller_price") @db.Decimal(18, 2)
+  // Komisi flat dari Digiflazz untuk produk pascabayar (cmd: "pasca").
+  // Diisi dari pricelist field `commission`. Untuk prepaid: null/0.
+  commission      Decimal?        @db.Decimal(18, 2)
+
+  // Operasional
+  status          ProductStatus   @default(ACTIVE)
+  // Penanda produk pascabayar (cmd "pasca", flow: inq-pasca → pay-pasca,
+  // cek status pakai status-pasca). Set saat sync dari endpoint pasca.
+  isPostpaid      Boolean         @default(false) @map("is_postpaid")
+  isCutoff        Boolean         @default(false) @map("is_cutoff")
+  cutoffStart     String?         @map("cutoff_start") @db.VarChar(8)     // "HH:mm"
+  cutoffEnd       String?         @map("cutoff_end") @db.VarChar(8)
+  multi           Boolean         @default(false)
+  stock           Int?
+
+  // Metadata Digiflazz (raw payload untuk audit)
+  providerMeta    Json?           @map("provider_meta")
+
+  transactions    Transaction[]
+
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  @@index([category, status])
+  @@index([brand])
+  @@index([isPostpaid])
+  @@map("products")
+}
+
+// ---------------------------------------------------------
+// TRANSACTION — order utama user
+// Satu transaksi = satu invoice = satu order ke Digiflazz.
+// ---------------------------------------------------------
+model Transaction {
+  id              String            @id @default(cuid())
+  // ID order yang dipakai di seluruh sistem (Duitku merchantOrderId & Digiflazz ref_id)
+  orderId         String            @unique @map("order_id") @db.VarChar(48)
+
+  userId          String            @map("user_id")
+  productId       String?           @map("product_id")
+
+  // Snapshot harga saat transaksi (jangan ambil dari Product runtime — harga bisa berubah)
+  productSku      String            @map("product_sku") @db.VarChar(64)
+  productName     String            @map("product_name") @db.VarChar(160)
+  basePrice       Decimal           @map("base_price") @db.Decimal(18, 2)
+  sellPrice       Decimal           @map("sell_price") @db.Decimal(18, 2)
+  adminFee        Decimal           @default(0) @map("admin_fee") @db.Decimal(18, 2)
+  totalAmount     Decimal           @map("total_amount") @db.Decimal(18, 2)
+
+  // Tujuan pengisian
+  customerNo      String            @map("customer_no") @db.VarChar(64)  // nomor HP / ID game / meter PLN
+  customerName    String?           @map("customer_name") @db.VarChar(120)
+  serverId        String?           @map("server_id") @db.VarChar(64)    // utk game (Zone ID dll)
+
+  // Pembayaran
+  paymentMethod   PaymentMethod     @map("payment_method")
+  paymentChannel  String?           @map("payment_channel") @db.VarChar(32) // kode Duitku (BCA, OVO, dst)
+  paymentRef      String?           @map("payment_ref") @db.VarChar(80)     // referensi dari Duitku
+  paymentUrl      String?           @map("payment_url") @db.Text
+  paidAt          DateTime?         @map("paid_at")
+  expiredAt       DateTime?         @map("expired_at")
+
+  // Provider (Digiflazz)
+  providerRef     String?           @map("provider_ref") @db.VarChar(80)    // ref_id digiflazz
+  providerSn      String?           @map("provider_sn") @db.VarChar(160)    // serial number / token PLN
+  providerMessage String?           @map("provider_message") @db.VarChar(255)
+  // Komisi pascabayar dari Digiflazz (snapshot saat pay-pasca sukses).
+  // Untuk prepaid biarkan null.
+  commission      Decimal?          @db.Decimal(18, 2)
+  // Detail tagihan dari inq-pasca (struk). Berisi raw `desc` Digiflazz:
+  // tarif/daya/alamat/periode/dll. Disimpan saat inquiry sukses.
+  inquiryDetail   Json?             @map("inquiry_detail")
+  // Periode tagihan (e.g. "201901", "MEI 22"). Diisi saat inq-pasca.
+  periode         String?           @db.VarChar(40)
+  // Apakah transaksi ini hasil inquiry pasca yang belum dibayar.
+  // PENDING + isInquiryOnly=true = nunggu user konfirmasi bayar.
+  isInquiryOnly   Boolean           @default(false) @map("is_inquiry_only")
+
+  // Status
+  status          TransactionStatus @default(PENDING)
+
+  // Relations
+  user            User              @relation(fields: [userId], references: [id])
+  // Optional supaya tx tidak rusak kalau product di-hapus admin
+  // (productSku/productName sudah di-snapshot di row tx ini).
+  product         Product?          @relation(fields: [productId], references: [id], onDelete: SetNull)
+  gatewayLogs     PaymentGatewayLog[]
+
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@index([paymentRef])
+  @@index([providerRef])
+  @@map("transactions")
+}
+
+// ---------------------------------------------------------
+// PAYMENT GATEWAY LOG — audit semua hit ke / dari provider
+// (Digiflazz & Duitku). Wajib disimpan untuk debugging,
+// reconciliation, dan validasi signature.
+// ---------------------------------------------------------
+model PaymentGatewayLog {
+  id            String              @id @default(cuid())
+  transactionId String?             @map("transaction_id")
+  provider      GatewayProvider
+  direction     GatewayLogDirection
+  endpoint      String              @db.VarChar(255)
+  httpStatus    Int?                @map("http_status")
+  signature     String?             @db.VarChar(160)
+  // Payload mentah — JANGAN log kredensial / api key.
+  // Sanitasi sebelum insert.
+  payload       Json?
+  errorMessage  String?             @map("error_message") @db.Text
+
+  transaction   Transaction?        @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  createdAt     DateTime            @default(now()) @map("created_at")
+
+  @@index([transactionId])
+  @@index([provider, direction, createdAt])
+  @@map("payment_gateway_logs")
+}
+
+// ---------------------------------------------------------
+// DEPOSIT — top-up saldo via QRIS / DANA dengan unique code matching.
+// Flow:
+//  1. User input nominal → sistem generate unique code (3 digit) → totalAmount.
+//  2. Generate QRIS dynamic dengan totalAmount.
+//  3. User bayar; notifikasi DANA push ke webhook /api/webhooks/dana-callback.
+//  4. Webhook match amount terhadap pending deposit, mark SUCCESS, kredit balance.
+// ---------------------------------------------------------
+model Deposit {
+  id           String        @id @default(cuid())
+  userId       String        @map("user_id")
+  method       DepositMethod @default(DANA)
+  amount       Decimal       @db.Decimal(18, 2)            // nominal request user
+  uniqueCode   Int           @map("unique_code")           // 3 digit pembeda
+  totalAmount  Decimal       @map("total_amount") @db.Decimal(18, 2) // amount + uniqueCode
+  status       DepositStatus @default(PENDING)
+  qrisPayload  String?       @map("qris_payload") @db.Text  // EMVCo dynamic QRIS string
+  description  String?       @db.VarChar(255)
+  paidAt       DateTime?     @map("paid_at")
+  expiresAt    DateTime      @map("expires_at")
+  // Detail dari notifikasi DANA saat match (JSON-stringified).
+  callbackRaw  String?       @map("callback_raw") @db.Text
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  // Index unik komposit untuk pencegahan duplikat unique amount aktif:
+  // Webhook akan mencari (totalAmount, status=PENDING) → harus unik supaya
+  // gak ambigu saat 2 user kebetulan request nominal akhir yg sama.
+  @@unique([totalAmount, status], name: "uniq_amount_status")
+  @@index([userId, createdAt])
+  @@index([status, expiresAt])
+  @@map("deposits")
+}
+
+// ---------------------------------------------------------
+// SETTING — key/value untuk konfigurasi runtime
+// (kredensial provider, markup, fitur flag, dll).
+// Value selalu string; parsing dilakukan di service layer.
+// ---------------------------------------------------------
+// ---------------------------------------------------------
+// CATEGORY SETTING — kustomisasi tampilan kategori di /topup.
+// Admin bisa: rename label, ganti icon (lucide name), ganti gradient,
+// hide, tambah badge (mis. "BARU", "PROMO"), atur urutan.
+// Key = enum value (PULSA, DATA, ...).
+// ---------------------------------------------------------
+model CategorySetting {
+  category    ProductCategory @id
+  label       String?         @db.VarChar(40)
+  iconName    String?         @map("icon_name") @db.VarChar(40)   // nama lucide-react (mis. "Smartphone")
+  gradient    String?         @db.VarChar(120)                     // tailwind class, mis. "from-emerald-500 to-teal-600"
+  badge       String?         @db.VarChar(20)                      // mis. "BARU", "PROMO"
+  hidden      Boolean         @default(false)
+  sortOrder   Int             @default(0) @map("sort_order")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  @@map("category_settings")
+}
+
+model Setting {
+  key       String   @id @db.VarChar(80)
+  value     String   @db.Text
+  // Kalau true, value disensor saat dikirim ke client (mis. apiKey).
+  isSecret  Boolean  @default(false) @map("is_secret")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+// ---------------------------------------------------------
+// OTP REQUEST — mapping dari requestId gateway ke user/purpose.
+//
+// Gateway (localhost:3001) sudah handle: code generation, hash, expiry,
+// max attempts, status. Kita simpan request-nya di sini supaya:
+//  - Bisa validate ownership (user A tidak bisa verify requestId user B).
+//  - Tahu purpose untuk side-effect (mis. setelah RESET_PASSWORD verified,
+//    kita boleh terima password baru di endpoint reset).
+//  - Audit trail.
+//
+// Kode OTP TIDAK PERNAH disimpan di tabel ini — itu di gateway.
+// ---------------------------------------------------------
+model OtpRequest {
+  id          String     @id @default(cuid())
+  // requestId yang dibalas oleh gateway (unik global).
+  requestId   String     @unique @map("request_id") @db.VarChar(64)
+  userId      String?    @map("user_id")
+  // Phone yang sudah dinormalisasi gateway (62xxxxxxxxx).
+  phone       String     @db.VarChar(20)
+  purpose     OtpPurpose
+  status      OtpStatus  @default(SENT)
+  expiresAt   DateTime   @map("expires_at")
+  verifiedAt  DateTime?  @map("verified_at")
+  // IP & UA yang request — buat audit & potensi anomaly detection.
+  ipAddress   String?    @map("ip_address") @db.VarChar(64)
+  userAgent   String?    @map("user_agent") @db.VarChar(255)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  @@index([userId, createdAt])
+  @@index([phone, purpose, createdAt])
+  @@index([status, expiresAt])
+  @@map("otp_requests")
+}

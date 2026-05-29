@@ -1,0 +1,40 @@
+Cek Status¶
+Mohon Perhatian
+
+Untuk menjaga konsistensi proses, kami menyarankan agar pemanggilan API untuk transaksi/data yang sama tidak dilakukan berulang dalam interval kurang dari 1 (satu) menit. Pemanggilan berulang dalam rentang waktu tersebut dapat menimbulkan race condition atau duplikasi proses. Segala risiko yang timbul dari kondisi tersebut berada di luar tanggung jawab kami.
+
+Prepaid¶
+Cek status dapat dilakukan dengan melakukan topup ulang dengan ref id yang sama pada transaksi sebelumnya.
+
+Silahkan ikuti petunjuk Topup untuk informasi Detail
+
+Mohon Perhatian
+
+Jangan pernah mencoba untuk melakukan Cek Status terhadap transaksi yang sudah lewat 90 HARI karena hal tersebut akan menyebabkan pembuatan transaksi BARU.
+
+Postpaid¶
+Cek status dapat dilakukan dengan ref id yang sama pada transaksi sebelumnya dengan command status-pasca.
+
+Mohon Perhatian
+
+Cek Status pascabayar terhadap transaksi yang sudah lewat 90 HARI akan mendapatkan pesan Data belum ada.
+
+Request¶
+Berikut adalah struktur JSON yang diharapkan:
+
+Parameter	Deskripsi	Tipe Data	Wajib
+commands	Perintah yang akan dieksekusi: status-pasca	String	Ya
+username	Username yang telah diatur di pengaturan koneksi API	String	Ya
+buyer_sku_code	Kode produk Anda	String	Ya
+customer_no	Nomor Pelanggan	String	Ya
+ref_id	Ref ID unik Anda	String	Ya
+sign	Signature dengan formula md5(username + apiKey + ref_id)	String	Ya
+Contoh¶
+{
+    "commands": "status-pasca",
+    "username": "username",
+    "buyer_sku_code": "pln",
+    "customer_no": "530000000003",
+    "ref_id": "some1d",
+    "sign": "740b00a1b8784e028cc8078edf66d12b"
+}

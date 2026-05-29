@@ -1,0 +1,932 @@
+Cek Tagihan¶
+Seluruh transaksi API kami akan diproses secara sinkron, yang berarti seluruh permintaan request akan langsung mendapatkan respon status sukses/gagal.
+
+Endpoint¶
+https://api.digiflazz.com/v1/transaction
+Request¶
+Produk dengan Format Tambahan
+
+Beberapa produk memiliki format tambahan. Berikut list produknya.
+
+PBB
+E-Money
+SAMSAT
+Jika produk yang ingin anda integrasikan termasuk dalam daftar di atas, mohon untuk melihat struktur JSON pada masing-masing produk tersebut
+
+Struktur JSON di bawah ini adalah format standar untuk memeriksa tagihan produk pascabayar di Digiflazz.
+
+Parameter	Deskripsi	Tipe Data	Wajib
+commands	Perintah yang akan dieksekusi: inq-pasca	String	Ya
+username	Username yang telah diatur di pengaturan koneksi API	String	Ya
+buyer_sku_code	Kode produk Anda	String	Ya
+customer_no	Nomor Pelanggan	String	Ya
+ref_id	Ref ID unik Anda	String	Ya
+sign	Signature dengan formula md5(username + apiKey + ref_id)	String	Ya
+testing	Value true apabila ingin melakukan development	Boolean	Tidak
+{
+    "commands": "inq-pasca",
+    "username": "username",
+    "buyer_sku_code": "pln",
+    "customer_no": "530000000003",
+    "ref_id": "some1d",
+    "sign": "740b00a1b8784e028cc8078edf66d12b"
+}
+Response PLN¶
+Berikut adalah struktur JSON yang akan diterima:
+
+Parameter	Deskripsi	Tipe Data	Wajib
+ref_id	Ref ID Unik Anda	String	Ya
+customer_no	Nomor pelanggan	String	Ya
+customer_name	Nama pelanggan	String	Ya
+buyer_sku_code	Kode produk Anda	String	Ya
+admin	Total biaya admin	Int	Ya
+message	Deskripsi Status Transaksi	String	Ya
+status	Status transaksi Sukses atau Gagal	String	Ya
+rc	Response Code	String	Ya
+periode	Periode tagihan	String	Tidak
+buyer_last_saldo	Saldo terakhir Anda setelah transaksi terjadi	Float	Ya
+price	Harga yang akan dipotong dari deposit Anda	Int	Ya
+selling_price	Harga yang akan dipotong dari client Anda	Int	Ya
+desc	Deskripsi produk	-	Ya
+   tarif	Tarif pln	String	Tidak
+   daya	Daya pln	Int	Tidak
+   lembar_tagihan	Jumlah lembar tagihan	Int	Tidak
+   detail	Detail setiap lembar tagihan	-	Ya
+      periode	Periode tagihan	String	Tidak
+      nilai_tagihan	Nilai tagihan periode tertentu	String	Tidak
+      admin	Biaya admin tagihan tertentu	String	Tidak
+      denda	Biaya denda tagihan tertentu	String	Tidak
+Perhatian
+
+Response JSON akan di bungkus oleh variable data , pastikan anda melakukan parsing dengan benar.
+
+{
+  "data": {
+    "ref_id": "some1d",
+    "customer_no": "530000000001",
+    "customer_name": "Nama Pelanggan Pertama",
+    "buyer_sku_code": "i5",
+    "admin": 2500,
+    "message": "Transaksi Sukses",
+    "status": "Sukses",
+    "rc": "00",
+    "periode": "201901",
+    "buyer_last_saldo": 100000,
+    "price": 10000,
+    "selling_price": 11000,
+    "desc": {
+      "tarif": "R1",
+      "daya": 1300,
+      "lembar_tagihan": 1,
+      "detail": [
+        {
+          "periode": "201901",
+          "nilai_tagihan": "8000",
+          "admin": "2500",
+          "denda": "500"
+        }
+      ]
+    }
+  }
+}
+Response PDAM¶
+Berikut adalah struktur JSON yang akan diterima:
+
+Parameter	Deskripsi	Tipe Data	Wajib
+ref_id	Ref ID Unik Anda	String	Ya
+customer_no	Nomor pelanggan	String	Ya
+customer_name	Nama pelanggan	String	Ya
+buyer_sku_code	Kode produk Anda	String	Ya
+admin	Total biaya admin	Int	Ya
+message	Deskripsi Status Transaksi	String	Ya
+status	Status transaksi Sukses atau Gagal	String	Ya
+rc	Response Code	String	Ya
+periode	Periode tagihan	String	Tidak
+buyer_last_saldo	Saldo terakhir Anda setelah transaksi terjadi	Float	Ya
+price	Harga yang akan dipotong dari deposit Anda	Int	Ya
+selling_price	Harga yang akan dipotong dari client Anda	Int	Ya
+desc	Deskripsi produk	-	Ya
+   tarif	Tarif PDAM	String	Tidak
+   lembar_tagihan	Jumlah lembar tagihan	Int	Tidak
+   alamat	Alamat tagihan	String	Tidak
+   jatuh_tempo	Tanggal tagihan jatuh tempo	String	Tidak
+   detail	Detail setiap lembar tagihan	-	Ya
+      periode	Periode tagihan	String	Tidak
+      nilai_tagihan	Nilai tagihan periode tertentu	String	Tidak
+      denda	Biaya denda tagihan tertentu	String	Tidak
+      meter_awal	Meter awal tagihan tertentu	String	Tidak
+      meter_akhir	Meter akhir tagihan tertentu	String	Tidak
+      biaya_lain	Biaya lainnya tagihan tertentu	String	Tidak
+Perhatian
+
+Response JSON akan di bungkus oleh variable data , pastikan anda melakukan parsing dengan benar.
+
+{
+  "data": {
+    "ref_id": "353688162",
+    "customer_no": "1013226",
+    "customer_name": "Nama Pelanggan Pertama",
+    "buyer_sku_code": "pdam",
+    "admin": 2500,
+    "message": "Transaksi Sukses",
+    "status": "Sukses",
+    "rc": "00",
+    "periode": "201901",
+    "buyer_last_saldo": 100000,
+    "price": 11500,
+    "selling_price": 12500,
+    "desc": {
+      "tarif": "3A",
+      "lembar_tagihan": 1,
+      "alamat": "WONOKROMO S.S BARU 2 8",
+      "jatuh_tempo": "1-15 DES 2014",
+      "detail": [
+        {
+          "periode": "201901",
+          "nilai_tagihan": "8000",
+          "denda": "500",
+          "meter_awal": "00080000",
+          "meter_akhir": "00090000",
+          "biaya_lain": "1500"
+        }
+      ]
+    }
+  }
+}
+Response INTERNET¶
+Berikut adalah struktur JSON yang akan diterima:
+
+Parameter	Deskripsi	Tipe Data	Wajib
+ref_id	Ref ID Unik Anda	String	Ya
+customer_no	Nomor pelanggan	String	Ya
+customer_name	Nama pelanggan	String	Ya
+buyer_sku_code	Kode produk Anda	String	Ya
+admin	Total biaya admin	Int	Ya
+message	Deskripsi Status Transaksi	String	Ya
+status	Status transaksi Sukses atau Gagal	String	Ya
+rc	Response Code	String	Ya
+periode	Periode tagihan	String	Tidak
+buyer_last_saldo	Saldo terakhir Anda setelah transaksi terjadi	Float	Ya
+price	Harga yang akan dipotong dari deposit Anda	Int	Ya
+selling_price	Harga yang akan dipotong dari client Anda	Int	Ya
+desc	Deskripsi produk	-	Ya
+   lembar_tagihan	Jumlah lembar tagihan	Int	Tidak
+   detail	Detail setiap lembar tagihan	-	Tidak
+      periode	Periode tagihan	String	Tidak
+      nilai_tagihan	Nilai tagihan periode tertentu	String	Tidak
+      admin	Admin tagihan tertentu	String	Tidak
+Perhatian
+
+Response JSON akan di bungkus oleh variable data , pastikan anda melakukan parsing dengan benar.
+
+{
+  "data": {
+    "ref_id": "4536881875",
+    "customer_no": "6391601001",
+    "customer_name": "Nama Pelanggan",
+    "buyer_sku_code": "internet",
+    "admin": 5000,
+    "message": "Transaksi Sukses",
+    "status": "Sukses",
+    "sn": "",
+    "rc": "00",
+    "periode": "MEI 2019,JUN 2019",
+    "buyer_last_saldo": 100000,
+    "price": 22500,
+    "selling_price": 24500,
+    "desc": {
+      "lembar_tagihan": 2,
+      "detail": [
+        {
+          "periode": "MEI 2019",
+          "nilai_tagihan": "8000",
+          "admin": "2500"
+        },
+        {
+          "periode": "JUN 2019",
+          "nilai_tagihan": "11500",
+          "admin": "2500"
+        }
+      ]
+    }
+  }
+}
+Response BPJS Kesehatan¶
+Berikut adalah struktur JSON yang akan diterima:
+
+Parameter	Deskripsi	Tipe Data	Wajib
+ref_id	Ref ID Unik Anda	String	Ya
+customer_no	Nomor pelanggan	String	Ya
+customer_name	Nama pelanggan	String	Ya
+buyer_sku_code	Kode produk Anda	String	Ya
+admin	Total biaya admin	Int	Ya
+message	Deskripsi Status Transaksi	String	Ya
+status	Status transaksi Sukses atau Gagal	String	Ya
+rc	Response Code	String	Ya
+periode	Periode tagihan	String	Tidak
+buyer_last_saldo	Saldo terakhir Anda setelah transaksi terjadi	Float	Ya
+price	Harga yang akan dipotong dari deposit Anda	Int	Ya
+selling_price	Harga yang akan dipotong dari client Anda	Int	Ya
+desc	Deskripsi produk	-	Ya
+   jumlah_peserta	Jumlah peserta BPJS	String	Tidak
+   lembar_tagihan	Jumlah lembar tagihan	Int	Tidak
+   alamat	Alamat peserta BPJS	String	Tidak
+   detail	Detail setiap lembar tagihan	-	Ya
+      periode	Banyak periode tagihan	String	Tidak
+Perhatian
+
+Response JSON akan di bungkus oleh variable data , pastikan anda melakukan parsing dengan benar.
+
+{
+  "data": {
+    "ref_id": "4536881875",
+    "customer_no": "8801234560001",
+    "customer_name": "Nama Pelanggan",
+    "buyer_sku_code": "bpjs",
+    "admin": 2500,
+    "message": "Transaksi Sukses",
+    "status": "Sukses",
+    "sn": "",
+    "rc": "00",
+    "periode": "01",
+    "buyer_last_saldo": 100000,
+    "price": 24700,
+    "selling_price": 25000,
+    "desc": {
+      "jumlah_peserta": "2",
+      "lembar_tagihan": 1,
+      "alamat": "JAKARTA PUSAT",
+      "detail": [
+        {
+          "periode": "01"
+        }
+      ]
+    }
+  }
+}
+Response Multifinance¶
+Berikut adalah struktur JSON yang akan diterima:
+
+Parameter	Deskripsi	Tipe Data	Wajib
+ref_id	Ref ID Unik Anda	String	Ya
+customer_no	Nomor pelanggan	String	Ya
+customer_name	Nama pelanggan	String	Ya
+buyer_sku_code	Kode produk Anda	String	Ya
+admin	Total biaya admin	Int	Ya
+message	Deskripsi Status Transaksi	String	Ya
+status	Status transaksi Sukses atau Gagal	String	Ya
+rc	Response Code	String	Ya
+periode	Periode tagihan	String	Tidak
+buyer_last_saldo	Saldo terakhir Anda setelah transaksi terjadi	Float	Ya
+price	Harga yang akan dipotong dari deposit Anda	Int	Ya
+selling_price	Harga yang akan dipotong dari client Anda	Int	Ya
+desc	Deskripsi produk	-	Ya
+   lembar_tagihan	Jumlah lembar tagihan	Int	Tidak
+   item_name	Nama Benda	String	Tidak
+   no_rangka	Nomor rangka	String	Ya
+   no_pol	Nomor Polisi	String	Tidak
+   tenor	Jumlah Angsuran	String	Tidak
+   detail	Detail setiap lembar tagihan	-	Ya
+      periode	Nomor urut periode	String	Tidak
+      denda	Denda	String	Tidak
+      biaya_lain	Biaya lain-lain	String	Tidak
+Perhatian
+
+Response JSON akan di bungkus oleh variable data , pastikan anda melakukan parsing dengan benar.
+
+{
+  "data": {
+    "ref_id": "ref-1",
+    "customer_no": "6391601201",
+    "customer_name": "Nama Pelanggan Pertama",
+    "buyer_sku_code": "multifinance",
+    "admin": 2500,
+    "message": "Transaksi Sukses",
+    "status": "Sukses",
+    "sn": "",
+    "rc": "00",
+    "periode": "002",
+    "buyer_last_saldo": 100000,
+    "price": 24700,
+    "selling_price": 25000,
+    "desc": {
+      "lembar_tagihan": 1,
+      "item_name": "HONDA VARIO TECHNO 125 PGM FI NON CBS",
+      "no_rangka": "MH1JFB111CK196426",
+      "no_pol": "B6213UWX",
+      "tenor": "030",
+      "detail": [
+        {
+          "periode": "002",
+          "denda": "0",
+          "biaya_lain": "0"
+        }
+      ]
+    }
+  }
+}
+PBB¶
+Request PBB¶
+Berikut adalah struktur JSON yang diharapkan:
+
+Parameter	Deskripsi	Tipe Data	Wajib
+commands	Perintah yang akan dieksekusi: inq-pasca	String	Ya
+username	Username yang telah diatur di pengaturan koneksi API	String	Ya
+buyer_sku_code	Kode produk Anda	String	Ya
+customer_no	Format: Kode Pembayaran, Nomor Identitas	String	Ya
+ref_id	Ref ID unik Anda	String	Ya
+sign	Signature dengan formula md5(usrname + apiKey + ref_id)	String	Ya
+year	Tahun pajak. Dapat diisi jika ingin mengambil tagihan pada tahun pajak tertentu. Contoh: 2025	Int	Tidak. Jika tidak diisi, akan menggunakan tahun berjalan
+testing	Value true apabila ingin melakukan development	Boolean	Tidak
+Response PBB¶
+Berikut adalah struktur JSON yang akan diterima:
+
+Parameter	Deskripsi	Tipe Data	Wajib
+ref_id	Ref ID Unik Anda	String	Ya
+customer_no	Nomor pelanggan	String	Ya
+customer_name	Nama pelanggan	String	Ya
+buyer_sku_code	Kode produk Anda	String	Ya
+admin	Total biaya admin	Int	Ya
+message	Deskripsi Status Transaksi	String	Ya
+status	Status transaksi Sukses atau Gagal	String	Ya
+rc	Response Code	String	Ya
+buyer_last_saldo	Saldo terakhir Anda setelah transaksi terjadi	Float	Ya
+price	Harga yang akan dipotong dari deposit Anda	Int	Ya
+selling_price	Harga yang akan dipotong dari client Anda	Int	Ya
+desc	Deskripsi produk	-	Ya
+   lembar_tagihan	Jumlah lembar tagihan	Int	Tidak
+   alamat	Alamat	String	Tidak
+   tahun_pajak	Tahun pajak	String	Ya
+   kelurahan	Kelurahan	String	Tidak
+   kecamatan	Kecamatan	String	Tidak
+   kode_kab_kota	Kode kabupaten kota	-	Ya
+   kab_kota	Kabupaten kota	String	Tidak
+   luas_tanah	Luas tanah	String	Tidak
+   luas_gedung	Luas gedung	String	Tidak
+Perhatian
+
+Response JSON akan di bungkus oleh variable data , pastikan anda melakukan parsing dengan benar.
+
+{
+  "data": {
+    "ref_id": "ref-4",
+    "customer_no": "329801092375999991",
+    "customer_name": "Nama Pelanggan Pertama",
+    "buyer_sku_code": "cimahi",
+    "admin": 2500,
+    "message": "Transaksi Sukses",
+    "status": "Sukses",
+    "sn": "",
+    "rc": "00",
+    "periode": "2019",
+    "buyer_last_saldo": 100000,
+    "price": 99500,
+    "selling_price": 100000,
+    "desc": {
+      "lembar_tagihan": 1,
+      "alamat": "KO. GRIYA ASRI CIPAGERAN",
+      "tahun_pajak": "2019",
+      "kelurahan": "CIPAGERAN",
+      "kecamatan": "CIPAGERAN",
+      "kode_kab_kota": "0023",
+      "kab_kota": "PEMKOT CIMAHI",
+      "luas_tanah": "113 M2",
+      "luas_gedung": "47 M2"
+    }
+  }
+}
+Response Pajak Daerah Lainnya¶
+Berikut adalah struktur JSON yang akan diterima:
+
+Parameter	Deskripsi	Tipe Data	Wajib
+ref_id	Ref ID Unik Anda	String	Ya
+customer_no	Nomor pelanggan	String	Ya
+customer_name	Nama pelanggan	String	Ya
+buyer_sku_code	Kode produk Anda	String	Ya
+admin	Total biaya admin	Int	Ya
+message	Deskripsi Status Transaksi	String	Ya
+status	Status transaksi Sukses atau Gagal	String	Ya
+rc	Response Code	String	Ya
+periode	Periode tagihan	String	Tidak
+buyer_last_saldo	Saldo terakhir Anda setelah transaksi terjadi	Float	Ya
+price	Harga yang akan dipotong dari deposit Anda	Int	Ya
+selling_price	Harga yang akan dipotong dari client Anda	Int	Ya
+desc	Deskripsi produk	-	Ya
+   lembar_tagihan	Jumlah lembar tagihan	Int	Tidak
+   alamat	Alamat	String	Tidak
+   tahun_pajak	Tahun pajak	String	Ya
+   kelurahan	Kelurahan	String	Tidak
+   kecamatan	Kecamatan	String	Tidak
+   kode_kab_kota	Kode kabupaten kota	String	Ya
+   kab_kota	Kabupaten kota	String	Tidak
+   provinsi	Provinsi	String	Tidak
+   luas_tanah	Luas tanah	String	Tidak
+   luas_gedung	Luas gedung	String	Tidak
+Perhatian
+
+Response JSON akan di bungkus oleh variable data , pastikan anda melakukan parsing dengan benar.
+
+{
+  "data": {
+    "ref_id": "ref-4",
+    "customer_no": "329801092375999991",
+    "customer_name": "Nama Pelanggan Pertama",
+    "buyer_sku_code": "cimahi",
+    "admin": 2500,
+    "message": "Transaksi Sukses",
+    "status": "Sukses",
+    "sn": "",
+    "rc": "00",
+    "periode": "2019",
+    "buyer_last_saldo": 100000,
+    "price": 99500,
+    "selling_price": 100000,
+    "desc": {
+      "lembar_tagihan": 1,
+      "alamat": "KO. GRIYA ASRI CIPAGERAN",
+      "tahun_pajak": "2019",
+      "kelurahan": "CIPAGERAN",
+      "kecamatan": "CIPAGERAN",
+      "kode_kab_kota": "0023",
+      "kab_kota": "PEMKOT CIMAHI",
+      "provinsi": "Jawa Barat",
+      "luas_tanah": "113 M2",
+      "luas_gedung": "47 M2"
+    }
+  }
+}
+Response GAS NEGARA / PERTAGAS¶
+Berikut adalah struktur JSON yang akan diterima:
+
+Parameter	Deskripsi	Tipe Data	Wajib
+ref_id	Ref ID Unik Anda	String	Ya
+customer_no	Nomor pelanggan	String	Ya
+customer_name	Nama pelanggan	String	Ya
+buyer_sku_code	Kode produk Anda	String	Ya
+admin	Total biaya admin	Int	Ya
+message	Deskripsi Status Transaksi	String	Ya
+status	Status transaksi Sukses atau Gagal	String	Ya
+rc	Response Code	String	Ya
+periode	Periode tagihan	String	Tidak
+buyer_last_saldo	Saldo terakhir Anda setelah transaksi terjadi	Float	Ya
+price	Harga yang akan dipotong dari deposit Anda	Int	Ya
+selling_price	Harga yang akan dipotong dari client Anda	Int	Ya
+desc	Deskripsi produk	-	Ya
+   lembar_tagihan	Jumlah lembar tagihan	Int	Tidak
+   alamat	Alamat tagihan	String	Tidak
+   detail	Detail setiap lembar tagihan	-	Ya
+      periode	Periode tagihan	String	Tidak
+      meter_awal	Meter awal tagihan tertentu	String	Tidak
+      meter_akhir	Meter akhir tagihan tertentu	String	Tidak
+      usage	Jumlah penggunaan meter	String	Tidak
+Perhatian
+
+Response JSON akan di bungkus oleh variable data , pastikan anda melakukan parsing dengan benar.
+
+{
+  "data": {
+    "ref_id": "ref-9",
+    "customer_no": "0110014601",
+    "customer_name": "Nama Pelanggan Pertama",
+    "buyer_sku_code": "pgas",
+    "admin": 2500,
+    "message": "Transaksi Sukses",
+    "status": "Sukses",
+    "sn": "",
+    "rc": "00",
+    "periode": "0320",
+    "buyer_last_saldo": 100000,
+    "price": 99500,
+    "selling_price": 100000,
+    "desc": {
+      "lembar_tagihan": 1,
+      "alamat": "KO. GRIYA ASRI CIPAGERAN",
+      "detail": [
+        {
+          "periode": "0320",
+          "meter_awal": "006538",
+          "meter_akhir": "006573",
+          "usage": "35"
+        }
+      ]
+    }
+  }
+}
+Response TV¶
+Berikut adalah struktur JSON yang akan diterima:
+
+Parameter	Deskripsi	Tipe Data	Wajib
+ref_id	Ref ID Unik Anda	String	Ya
+customer_no	Nomor pelanggan	String	Ya
+customer_name	Nama pelanggan	String	Ya
+buyer_sku_code	Kode produk Anda	String	Ya
+admin	Total biaya admin	Int	Ya
+message	Deskripsi Status Transaksi	String	Ya
+status	Status transaksi Sukses atau Gagal	String	Ya
+rc	Response Code	String	Ya
+periode	Periode tagihan	String	Tidak
+buyer_last_saldo	Saldo terakhir Anda setelah transaksi terjadi	Float	Ya
+price	Harga yang akan dipotong dari deposit Anda	Int	Ya
+selling_price	Harga yang akan dipotong dari client Anda	Int	Ya
+desc	Deskripsi produk	-	Ya
+   lembar_tagihan	Jumlah lembar tagihan	Int	Tidak
+   detail	Detail setiap lembar tagihan	-	Tidak
+      periode	Periode tagihan	String	Tidak
+      nilai_tagihan	Jumlah tagihan periode tertentu	String	Tidak
+      no_ref	Nomor Referensi periode tertentu	String	Tidak
+Perhatian
+
+Response JSON akan di bungkus oleh variable data , pastikan anda melakukan parsing dengan benar.
+
+{
+  "data": {
+    "ref_id": "ref-367",
+    "customer_no": "127246500105",
+    "customer_name": "Nama Pelanggan Pertama",
+    "buyer_sku_code": "tv",
+    "admin": 2500,
+    "message": "Transaksi Sukses",
+    "status": "Sukses",
+    "sn": "",
+    "rc": "00",
+    "periode": "MEI 22",
+    "buyer_last_saldo": 100000,
+    "price": 99500,
+    "selling_price": 100000,
+    "desc": {
+      "lembar_tagihan": 1,
+      "detail": [
+        {
+          "periode": "MEI 22",
+          "nilai_tagihan": "97500",
+          "no_ref": "205A"
+        }
+      ]
+    }
+  }
+}
+Response BPJSTK¶
+Berikut adalah struktur JSON yang akan diterima:
+
+Parameter	Deskripsi	Tipe Data	Wajib
+ref_id	Ref ID Unik Anda	String	Ya
+customer_no	Nomor pelanggan	String	Ya
+customer_name	Nama pelanggan	String	Ya
+buyer_sku_code	Kode produk Anda	String	Ya
+admin	Total biaya admin	Int	Ya
+message	Deskripsi Status Transaksi	String	Ya
+status	Status transaksi Sukses atau Gagal	String	Ya
+rc	Response Code	String	Ya
+periode	Periode tagihan	String	Tidak
+buyer_last_saldo	Saldo terakhir Anda setelah transaksi terjadi	Float	Ya
+price	Harga yang akan dipotong dari deposit Anda	Int	Ya
+selling_price	Harga yang akan dipotong dari client Anda	Int	Ya
+desc	Deskripsi produk	-	Ya
+   lembar_tagihan	Jumlah lembar tagihan	Int	Tidak
+   kode_iuran	Kode iuran	String	Tidak
+   kode_program	Kode program pilihan	String	Tidak
+   jkk	Biaya Jaminan Kecelakaan Kerja	Int	Tidak
+   jkm	Biaya Kematian	Int	Tidak
+   jht	Biaya Jaminan Hari Tua	Int	Tidak
+   kantor_cabang	Kantor Cabang	String	Tidak
+   tgl_efektif	Tanggal Efektif	String	Tidak
+   tgl_expired	Tanggal Kedaluarsa	String	Tidak
+Perhatian
+
+Response JSON akan di bungkus oleh variable data , pastikan anda melakukan parsing dengan benar.
+
+{
+  "data": {
+    "ref_id": "ref-93",
+    "customer_no": "8102051011270001",
+    "customer_name": "Nama Pelanggan",
+    "buyer_sku_code": "bpjstk",
+    "admin": 2500,
+    "message": "Transaksi Sukses",
+    "status": "Sukses",
+    "sn": "",
+    "rc": "00",
+    "buyer_last_saldo": 100000,
+    "price": 16500,
+    "selling_price": 17500,
+    "desc": {
+      "lembar_tagihan": 1,
+      "kode_iuran": "919013012977",
+      "kode_program": "JKK,JKM",
+      "jkk": 10000,
+      "jkm": 2500,
+      "jht": 2500,
+      "kantor_cabang": "SAMPIT",
+      "tgl_efektif": "2023-05-03",
+      "tgl_expired": "2027-05-03"
+    }
+  }
+}
+Response BPJSTKPU (Penerima Upah)¶
+Berikut adalah struktur JSON yang akan diterima:
+
+Parameter	Deskripsi	Tipe Data	Wajib
+ref_id	Ref ID Unik Anda	String	Ya
+customer_no	Nomor pelanggan	String	Ya
+customer_name	Nama pelanggan	String	Ya
+buyer_sku_code	Kode produk Anda	String	Ya
+admin	Total biaya admin	Int	Ya
+message	Deskripsi Status Transaksi	String	Ya
+status	Status transaksi Sukses atau Gagal	String	Ya
+rc	Response Code	String	Ya
+periode	Periode tagihan	String	Tidak
+buyer_last_saldo	Saldo terakhir Anda setelah transaksi terjadi	Float	Ya
+price	Harga yang akan dipotong dari deposit Anda	Int	Ya
+selling_price	Harga yang akan dipotong dari client Anda	Int	Ya
+desc	Deskripsi produk	-	Ya
+   lembar_tagihan	Jumlah lembar tagihan	Int	Tidak
+   kode_iuran	Kode iuran	String	Tidak
+   kode_program	Kode program pilihan	String	Tidak
+   jkk	Biaya Jaminan Kecelakaan Kerja	Int	Tidak
+   jkm	Biaya Kematian	Int	Tidak
+   jht	Biaya Jaminan Hari Tua	Int	Tidak
+   jpk	Biaya Kehilangan Pekerjaan	Int	Tidak
+   jpn	Biaya Jaminan Pensiun	Int	Tidak
+   kantor_cabang	Kantor Cabang	String	Tidak
+   tgl_efektif	Tanggal Efektif	String	Tidak
+   tgl_expired	Tanggal Kedaluarsa	String	Tidak
+Perhatian
+
+Response JSON akan di bungkus oleh variable data , pastikan anda melakukan parsing dengan benar.
+
+{
+  "data": {
+    "ref_id": "ref-93",
+    "customer_no": "400000100001",
+    "customer_name": "Nama Pelanggan",
+    "buyer_sku_code": "bpjstkpu",
+    "admin": 2500,
+    "message": "Transaksi Sukses",
+    "status": "Sukses",
+    "sn": "",
+    "rc": "00",
+    "buyer_last_saldo": 200000,
+    "price": 101500,
+    "selling_price": 102500,
+    "desc": {
+      "lembar_tagihan": 1,
+      "kode_iuran": "415092870000/230501086970",
+      "jht": 1617477,
+      "jkk": 67104,
+      "jkm": 84130,
+      "jpk": 1000,
+      "jpn": 1000,
+      "npp": "15092870",
+      "kode_divisi": "000"
+    }
+  }
+}
+Response PLN Nontaglis¶
+Berikut adalah struktur JSON yang akan diterima:
+
+Parameter	Deskripsi	Tipe Data	Wajib
+ref_id	Ref ID Unik Anda	String	Ya
+customer_no	Nomor pelanggan	String	Ya
+customer_name	Nama pelanggan	String	Ya
+buyer_sku_code	Kode produk Anda	String	Ya
+admin	Total biaya admin	Int	Ya
+message	Deskripsi Status Transaksi	String	Ya
+status	Status transaksi Sukses atau Gagal	String	Ya
+rc	Response Code	String	Ya
+periode	Periode tagihan	String	Tidak
+buyer_last_saldo	Saldo terakhir Anda setelah transaksi terjadi	Float	Ya
+price	Harga yang akan dipotong dari deposit Anda	Int	Ya
+selling_price	Harga yang akan dipotong dari client Anda	Int	Ya
+desc	Deskripsi produk	-	Ya
+   lembar_tagihan	Jumlah lembar tagihan	Int	Tidak
+   transaksi	Informasi transaksi	String	Tidak
+   no_registrasi	Nomor registrasi	String	Tidak
+   tanggal_registrasi	Tanggal registrasi	String	Tidak
+Perhatian
+
+Response JSON akan di bungkus oleh variable data , pastikan anda melakukan parsing dengan benar.
+
+{
+  "data": {
+    "ref_id": "ref-109",
+    "customer_no": "3225030005921",
+    "customer_name": "Nama Pelanggan",
+    "buyer_sku_code": "plnnontaglist",
+    "admin": 2500,
+    "message": "Transaksi Sukses",
+    "status": "Sukses",
+    "rc": "00",
+    "buyer_last_saldo": 100000,
+    "price": 24700,
+    "selling_price": 25000,
+    "desc": {
+      "lembar_tagihan": 1,
+      "transaksi": "PENYAMBUNGAN BARU",
+      "no_registrasi": "5392112011703",
+      "tanggal_registrasi": "20120524"
+    }
+  }
+}
+E-Money¶
+Request E-Money¶
+Berikut adalah struktur JSON yang diharapkan:
+
+Parameter	Deskripsi	Tipe Data	Wajib
+commands	Perintah yang akan dieksekusi: inq-pasca	String	Ya
+username	Username yang telah diatur di pengaturan koneksi API	String	Ya
+buyer_sku_code	Kode produk Anda	String	Ya
+customer_no	Format: Kode Pembayaran, Nomor Identitas	String	Ya
+ref_id	Ref ID unik Anda	String	Ya
+sign	Signature dengan formula md5(username + apiKey + ref_id)	String	Ya
+amount	Denominasi emoney yang diinginkan	Int	Ya
+testing	Value true apabila ingin melakukan development	Boolean	Tidak
+{
+    "commands": "inq-pasca",
+    "username": "username",
+    "buyer_sku_code": "emoney",
+    "customer_no": "082100000001",
+    "ref_id": "some1d",
+    "amount": 22500,
+    "sign": "740b00a1b8784e028cc8078edf66d12b"
+}
+Response E-Money¶
+Berikut adalah struktur JSON yang akan diterima:
+
+Parameter	Deskripsi	Tipe Data	Wajib
+ref_id	Ref ID Unik Anda	String	Ya
+customer_no	Nomor pelanggan	String	Ya
+customer_name	Nama pelanggan	String	Ya
+buyer_sku_code	Kode produk Anda	String	Ya
+admin	Total biaya admin	Int	Ya
+message	Deskripsi Status Transaksi	String	Ya
+status	Status transaksi Sukses atau Gagal	String	Ya
+rc	Response Code	String	Ya
+buyer_last_saldo	Saldo terakhir Anda setelah transaksi terjadi	Float	Ya
+price	Harga yang akan dipotong dari deposit Anda	Int	Ya
+selling_price	Harga yang akan dipotong dari client Anda	Int	Ya
+desc	Deskripsi produk	-	Ya
+   lembar_tagihan	Jumlah lembar tagihan	Int	Tidak
+Perhatian
+
+Response JSON akan di bungkus oleh variable data , pastikan anda melakukan parsing dengan benar.
+
+{
+  "data": {
+    "ref_id": "20feb24ref-123",
+    "customer_no": "082100000001",
+    "customer_name": "Nama Pelanggan Pertama",
+    "buyer_sku_code": "emoney",
+    "admin": 2500,
+    "message": "Transaksi Sukses",
+    "status": "Sukses",
+    "rc": "00",
+    "buyer_last_saldo": 100000,
+    "price": 24700,
+    "selling_price": 25000,
+    "desc": {
+      "lembar_tagihan": 1
+    }
+  }
+}
+SAMSAT¶
+Request SAMSAT¶
+Berikut adalah struktur JSON yang diharapkan:
+
+Parameter	Deskripsi	Tipe Data	Wajib
+commands	Perintah yang akan dieksekusi: inq-pasca	String	Ya
+username	Username yang telah diatur di pengaturan koneksi API	String	Ya
+buyer_sku_code	Kode produk Anda	String	Ya
+customer_no	Format: Kode Pembayaran, Nomor Identitas	String	Ya
+ref_id	Ref ID unik Anda	String	Ya
+sign	Signature dengan formula md5(username + apiKey + ref_id)	String	Ya
+testing	Value true apabila ingin melakukan development	Boolean	Tidak
+{
+    "commands": "inq-pasca",
+    "username": "username",
+    "buyer_sku_code": "samsat",
+    "customer_no": "9658548523568705,0212502110170100",
+    "ref_id": "some1d",
+    "sign": "740b00a1b8784e028cc8078edf66d12b"
+}
+Response SAMSAT¶
+Berikut adalah struktur JSON yang akan diterima:
+
+Parameter	Deskripsi	Tipe Data	Wajib
+ref_id	Ref ID Unik Anda	String	Ya
+customer_no	Nomor pelanggan	String	Ya
+customer_name	Nama pelanggan	String	Ya
+buyer_sku_code	Kode produk Anda	String	Ya
+admin	Total biaya admin	Int	Ya
+message	Deskripsi Status Transaksi	String	Ya
+status	Status transaksi Sukses atau Gagal	String	Ya
+rc	Response Code	String	Ya
+periode	Periode tagihan	String	Tidak
+buyer_last_saldo	Saldo terakhir Anda setelah transaksi terjadi	Float	Ya
+price	Harga yang akan dipotong dari deposit Anda	Int	Ya
+selling_price	Harga yang akan dipotong dari client Anda	Int	Ya
+desc	Deskripsi produk	-	Ya
+   lembar_tagihan	Jumlah lembar tagihan	Int	Tidak
+   alamat	Alamat	String	Tidak
+   nomor_identitas	Nomor Identitas jatuh tempo	String	Tidak
+   nomor_rangka	Nomor Rangka	String	Tidak
+   nomor_mesin	Nomor Mesin	String	Tidak
+   nomor_polisi	Nomor Polisi	String	Tidak
+   milik_kenama	Milik Kenama	String	Tidak
+   merek_kb	Merek Kb	String	Tidak
+   model_kb	Model Kb	String	Tidak
+   tahun_buatan	Tahun Buatan	String	Tidak
+   tgl_akhir_pajak_baru	Tgl Akhir Pajak Baru	String	Tidak
+   biaya_pokok_bbn	Biaya Pokok Bbn	String	Tidak
+   biaya_pokok_swd	Biaya Pokok Swd	String	Tidak
+   biaya_pokok_pkb	Biaya Pokok Pkb	String	Tidak
+   biaya_denda_swd	Biaya Denda Swd	String	Tidak
+   biaya_denda_bbn	Biaya Denda Bbn	String	Tidak
+   biaya_denda_pkb	Biaya Denda Pkb	String	Tidak
+   biaya_admin_stnk	Biaya Admin Stnk	String	Tidak
+   biaya_admin_tnkb	Biaya Admin Tnkb	String	Tidak
+   biaya_parkir_pokok	Biaya Parkir Pokok	String	Tidak
+   biaya_pajak_progresif	Biaya Pajak Progresif	String	Tidak
+Perhatian
+
+Response JSON akan di bungkus oleh variable data , pastikan anda melakukan parsing dengan benar.
+
+{
+  "data": {
+    "ref_id": "ref-3936",
+    "customer_no": "9658548523568701,0212502110170100",
+    "customer_name": "Nama Pelanggan Pertama",
+    "buyer_sku_code": "samsat",
+    "admin": 2500,
+    "message": "Transaksi Sukses",
+    "status": "Sukses",
+    "sn": "",
+    "rc": "00",
+    "periode": "2018",
+    "buyer_last_saldo": 100000,
+    "price": 99500,
+    "selling_price": 100000,
+    "desc": {
+      "lembar_tagihan": 1,
+      "alamat": "GRIYA BULELENG 2 RT 005 RW 014 BULELENG",
+      "nomor_identitas": "0212502110170100",
+      "nomor_rangka": "MHKV5EA2JFJ001044",
+      "nomor_mesin": "1NRF012268",
+      "nomor_polisi": "DK 1243AL",
+      "milik_kenama": "001",
+      "merek_kb": "DAIHATSU",
+      "model_kb": "XENIA 1.3 R M/T F653RV-GMDFJ",
+      "tahun_buatan": "2018",
+      "tgl_akhir_pajak_baru": "20210309",
+      "biaya_pokok_bbn": "0",
+      "biaya_pokok_swd": "143000",
+      "biaya_pokok_pkb": "2131500",
+      "biaya_denda_swd": "0",
+      "biaya_denda_bbn": "0",
+      "biaya_denda_pkb": "0",
+      "biaya_admin_stnk": "0",
+      "biaya_admin_tnkb": "0",
+      "biaya_parkir_pokok": "0",
+      "biaya_pajak_progresif": "0"
+    }
+  }
+}
+Response HP / Lainnya¶
+Berikut adalah struktur JSON yang akan diterima:
+
+Parameter	Deskripsi	Tipe Data	Wajib
+ref_id	Ref ID Unik Anda	String	Ya
+customer_no	Nomor pelanggan	String	Ya
+customer_name	Nama pelanggan	String	Ya
+buyer_sku_code	Kode produk Anda	String	Ya
+admin	Total biaya admin	Int	Ya
+message	Deskripsi Status Transaksi	String	Ya
+status	Status transaksi Sukses atau Gagal	String	Ya
+rc	Response Code	String	Ya
+periode	Periode tagihan	String	Tidak
+buyer_last_saldo	Saldo terakhir Anda setelah transaksi terjadi	Float	Ya
+price	Harga yang akan dipotong dari deposit Anda	Int	Ya
+selling_price	Harga yang akan dipotong dari client Anda	Int	Ya
+desc	Deskripsi produk	-	Ya
+   lembar_tagihan	Jumlah lembar tagihan	Int	Tidak
+Perhatian
+
+Response JSON akan di bungkus oleh variable data , pastikan anda melakukan parsing dengan benar.
+
+{
+  "data": {
+    "ref_id": "353688162",
+    "customer_no": "1013226",
+    "customer_name": "Nama Pelanggan Pertama",
+    "buyer_sku_code": "hp",
+    "admin": 2500,
+    "message": "Transaksi Sukses",
+    "status": "Sukses",
+    "rc": "00",
+    "buyer_last_saldo": 100000,
+    "price": 11000,
+    "selling_price": 12500,
+    "desc": {
+      "lembar_tagihan": 1
+    }
+  }
+}

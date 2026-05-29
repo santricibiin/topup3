@@ -1,0 +1,71 @@
+Topup¶
+Seluruh transaksi API kami akan diproses secara sinkron, yang berarti seluruh permintaan request akan langsung mendapatkan respon status sukses/gagal/pending.
+
+Cek Status
+
+Respon dengan status pending dapat dicek kembali dengan melakukan topup ulang dengan ref_id yang sama pada transaksi sebelumnya.
+
+Endpoint¶
+https://api.digiflazz.com/v1/transaction
+Request¶
+Deskripsi¶
+Berikut adalah struktur JSON yang diharapkan:
+
+Parameter	Deskripsi	Tipe Data	Wajib
+username	Username yang telah diatur di pengaturan koneksi API	String	Ya
+buyer_sku_code	Kode produk Anda	String	Ya
+customer_no	Nomor Pelanggan	String	Ya
+ref_id	Ref ID unik Anda	String	Ya
+sign	Signature dengan formula md5(username + apiKey + ref_id)	String	Ya
+testing	Value true apabila ingin melakukan development	Boolean	Tidak
+max_price	Limit Harga Max	Int	Tidak
+cb_url	Callback URL	String	Tidak
+allow_dot	Value true apabila ingin Parameter customer_no berisi titik, optimal digunakan ke Seller dengan koneksi selain Jabber	Boolean	Tidak
+Webhoook Static
+
+Apabila Anda memiliki webhook static, silahkan atur pada menu atur koneksi API, tab Webhook. Cb_url digunakan apabila Anda memiliki lebih dari 1 webhook.
+
+Contoh¶
+{
+    "username": "username",
+    "buyer_sku_code": "xld25",
+    "customer_no": "087800001233",
+    "ref_id": "some1d",
+    "sign": "740b00a1b8784e028cc8078edf66d12b"
+}
+Response¶
+Berikut adalah struktur JSON yang akan diterima:
+
+Deskripsi¶
+Parameter	Deskripsi	Tipe Data	Wajib
+ref_id	Ref ID Unik Anda	String	Ya
+customer_no	Nomor pelanggan	String	Ya
+buyer_sku_code	Kode produk Anda	String	Ya
+message	Deskripsi Status Transaksi	String	Ya
+status	Status transaksi Sukses, Pending, Gagal	String	Ya
+rc	Response Code	String	Ya
+sn	Serial Number	String	Tidak
+buyer_last_saldo	Saldo terakhir Anda setelah transaksi terjadi	Float	Tidak
+price	Harga Produk	Integer	Ya
+tele	Telegram Seller	String	Tidak
+wa	Whatsapp Seller	String	Tidak
+Perhatian
+
+Response JSON akan di bungkus oleh variable data , pastikan anda melakukan parsing dengan benar.
+
+Contoh¶
+{
+    "data": {
+        "ref_id": "some1d",
+        "customer_no": "087800001233",
+        "buyer_sku_code": "xld25",
+        "message": "Transaksi Pending",
+        "status": "Pending",
+        "rc": "03",
+        "sn": "",
+        "buyer_last_saldo": 100000,
+        "price": 25000,
+        "tele": "@telegram",
+        "wa": "081234512345"
+    }
+}

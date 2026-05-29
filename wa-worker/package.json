@@ -1,0 +1,22 @@
+{
+  "name": "wa-worker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "WhatsApp OTP worker pakai Baileys — ditembak dari Next.js via HTTP localhost.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "@hapi/boom": "^10.0.0",
+    "@whiskeysockets/baileys": "github:skyzopedia/Baileys",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "jimp": "^0.22.12",
+    "pino": "^8.21.0",
+    "pino-pretty": "^11.2.2",
+    "qrcode": "^1.5.4"
+  }
+}
