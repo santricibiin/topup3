@@ -5,11 +5,12 @@
 #
 # Hapus semua artifact PTopup dari VPS supaya bisa deploy fresh.
 # Yang dihapus:
-#   - PM2 process + daemon
-#   - Folder /opt/ptopup
+#   - PM2 process 'ptopup' (Next.js, port 3000)
+#   - PM2 process 'wa-worker' (Baileys, port 3002) + sesi WA + auth folder
+#   - Folder /opt/ptopup (termasuk wa-worker/, auth/, node_modules/)
 #   - User ptopup (opsional via flag)
-#   - Database MySQL `ptopup` + user
-#   - File password DB
+#   - Database MySQL `ptopup` + user (termasuk semua setting waotp.*)
+#   - File kredensial: /root/.ptopup-db-password & /root/.ptopup-waotp-key
 #   - Nginx config
 #   - SSL certificate (kalau ada via Certbot)
 #
@@ -17,6 +18,7 @@
 #   - Node.js, MySQL server, Nginx, PM2, Certbot binaries
 #   - Swap file
 #   - UFW firewall rules
+#   - /root/backups/ (backup DB tetap aman)
 #
 # Cara pakai:
 #   sudo bash cleanup-vps.sh
@@ -64,6 +66,8 @@ echo ""
 echo -e "  Folder $APP_DIR        : ${RED}akan dihapus${NC}"
 echo -e "  Database $DB_NAME      : ${RED}akan di-DROP${NC}"
 echo -e "  PM2 process 'ptopup'   : ${RED}akan dihapus${NC}"
+echo -e "  PM2 process 'wa-worker': ${RED}akan dihapus${NC} (port 3002 + sesi Baileys)"
+echo -e "  WA worker key file     : ${RED}akan dihapus${NC} ($WA_KEY_FILE)"
 echo -e "  Nginx config           : ${RED}akan dihapus${NC}"
 [[ $REMOVE_USER -eq 1 ]] && echo -e "  User $APP_USER         : ${RED}akan dihapus${NC}"
 [[ $REMOVE_SSL -eq 1 ]] && [[ -n "$DOMAIN" ]] && echo -e "  SSL cert $DOMAIN       : ${RED}akan revoke${NC}"
@@ -75,7 +79,7 @@ read -r CONFIRM
 # ============================================================
 # 1. Stop & remove PM2 (NUCLEAR — kill semua proses node/next/pm2)
 # ============================================================
-step "1/6 — Stop PM2 process & free port 3000"
+step "1/6 — Stop PM2 process & free ports 3000/3002"
 
 # 1a. Stop PM2 daemon root + user (kalau ada)
 pm2 kill 2>/dev/null || true
