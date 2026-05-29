@@ -46,6 +46,18 @@ export const DEFAULT_CATEGORY_CONFIG: Record<ProductCategory, Omit<CategoryConfi
   OTHER: { label: "Lainnya", iconName: "solar:widget-bold-duotone", gradient: "from-zinc-500 to-zinc-700", badge: null, hidden: false, sortOrder: 999 },
 };
 
+/**
+ * Pengelompokan kategori untuk layout "Box Section" di halaman /topup.
+ * Definisi sebenarnya ada di modul pure `@/features/topup/category-groups`
+ * (tanpa dependensi prisma) supaya aman di-import dari client component juga.
+ * Di-re-export di sini untuk kemudahan akses dari layer service.
+ */
+export {
+  CATEGORY_GROUPS,
+  CATEGORY_TO_GROUP,
+  type CategoryGroup,
+} from "@/features/topup/category-groups";
+
 const TTL_MS = 30_000;
 let cache: { data: CategoryConfig[]; ts: number } | null = null;
 

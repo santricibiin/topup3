@@ -13,15 +13,17 @@ export const metadata = { title: "Admin · Pengaturan" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminSettingsPage() {
-  const [branding, categories, iconSizeRaw, iconShapeRaw] = await Promise.all([
+  const [branding, categories, iconSizeRaw, iconShapeRaw, groupedRaw] = await Promise.all([
     settingsService.getSiteBranding(),
     categorySettingsService.getAll(),
     settingsService.get(SETTING_KEYS.TOPUP_ICON_SIZE),
     settingsService.get(SETTING_KEYS.TOPUP_ICON_SHAPE),
+    settingsService.get(SETTING_KEYS.TOPUP_GROUPED_LAYOUT),
   ]);
   const iconSize = Math.max(24, Math.min(96, Number(iconSizeRaw) || 56));
   const iconShape: "rounded" | "circle" =
     iconShapeRaw === "circle" ? "circle" : "rounded";
+  const groupedLayout = groupedRaw === "true";
 
   return (
     <div className="space-y-6">
@@ -76,6 +78,7 @@ export default async function AdminSettingsPage() {
               }))}
               initialIconSize={iconSize}
               initialIconShape={iconShape}
+              initialGroupedLayout={groupedLayout}
             />
           </CardContent>
         </Card>

@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Search, ArrowLeft } from "lucide-react";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { BrandHero } from "./brand-hero";
+import { CATEGORY_GROUPS } from "../category-groups";
 
 export interface CategoryMeta {
   category: string;
@@ -28,9 +29,10 @@ interface Props {
   categoryMeta: CategoryMeta[];
   iconSize: number;
   iconShape?: "rounded" | "circle";
+  groupedLayout?: boolean;
 }
 
-export function TopupSearch({ brands, categoryMeta, iconSize, iconShape = "rounded" }: Props) {
+export function TopupSearch({ brands, categoryMeta, iconSize, iconShape = "rounded", groupedLayout = false }: Props) {
   const [q, setQ] = useState("");
   const [active, setActive] = useState<string | null>(null);
 
@@ -111,48 +113,64 @@ export function TopupSearch({ brands, categoryMeta, iconSize, iconShape = "round
       </div>
 
       {!showBrandGrid && (
-        <div>
-          <div className="mb-4 flex items-end justify-between">
+        <div className="space-y-6">
+          {groupedLayout ? (
+            CATEGORY_GROUPS.map((group) => {
+              const groupCats = categoriesWithCount.filter((c) =>
+                group.categories.includes(c.category),
+              );
+              if (groupCats.length === 0) return null;
+              return (
+                <section
+                  key={group.key}
+                  className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
+                >
+                  <div className="border-b border-border/60 px-5 py-3.5">
+                    <h2 className="text-base font-semibold tracking-tight md:text-lg">
+                      {group.label}
+                    </h2>
+                  </div>
+                  <div className={`grid gap-y-4 gap-x-3 p-5 ${catGridCls}`}>
+                    {groupCats.map((c) => (
+                      <CategoryButton
+                        key={c.category}
+                        meta={c}
+                        iconSize={iconSize}
+                        iconShape={iconShape}
+                        labelPx={catLabelPx}
+                        onClick={() => setActive(c.category)}
+                      />
+                    ))}
+                  </div>
+                </section>
+              );
+            })
+          ) : (
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">
-                Pilih Kategori
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Tap kategori untuk lihat brand yang tersedia.
-              </p>
-            </div>
-          </div>
-          <div className={`grid gap-y-4 gap-x-3 ${catGridCls}`}>
-            {categoriesWithCount.map((c) => (
-              <button
-                key={c.category}
-                type="button"
-                onClick={() => setActive(c.category)}
-                className="group relative flex flex-col items-center gap-2 text-center transition-all hover:-translate-y-0.5"
-              >
-                {c.badge && (
-                  <span className="absolute -right-1 -top-1.5 z-10 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-destructive-foreground shadow-md ring-2 ring-background">
-                    {c.badge}
-                  </span>
-                )}
-                <div
-                  className={`grid place-items-center bg-gradient-to-br text-white shadow-md ring-1 ring-black/5 transition-shadow group-hover:shadow-lg ${iconShape === "circle" ? "rounded-full" : "rounded-2xl"} ${c.gradient}`}
-                  style={{ width: iconSize, height: iconSize }}
-                >
-                  <CategoryIcon
-                    name={c.iconName}
-                    className="h-1/2 w-1/2"
+              <div className="mb-4 flex items-end justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold tracking-tight">
+                    Pilih Kategori
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Tap kategori untuk lihat brand yang tersedia.
+                  </p>
+                </div>
+              </div>
+              <div className={`grid gap-y-4 gap-x-3 ${catGridCls}`}>
+                {categoriesWithCount.map((c) => (
+                  <CategoryButton
+                    key={c.category}
+                    meta={c}
+                    iconSize={iconSize}
+                    iconShape={iconShape}
+                    labelPx={catLabelPx}
+                    onClick={() => setActive(c.category)}
                   />
-                </div>
-                <div
-                  className="font-medium leading-tight text-foreground"
-                  style={{ fontSize: `${catLabelPx}px` }}
-                >
-                  {c.label}
-                </div>
-              </button>
-            ))}
-          </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -211,5 +229,47 @@ export function TopupSearch({ brands, categoryMeta, iconSize, iconShape = "round
         </div>
       )}
     </div>
+  );
+}
+
+interface CategoryButtonProps {
+  meta: CategoryMeta & { count: number };
+  iconSize: number;
+  iconShape: "rounded" | "circle";
+  labelPx: number;
+  onClick: () => void;
+}
+
+function CategoryButton({
+  meta,
+  iconSize,
+  iconShape,
+  labelPx,
+  onClick,
+}: CategoryButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group relative flex flex-col items-center gap-2 text-center transition-all hover:-translate-y-0.5"
+    >
+      {meta.badge && (
+        <span className="absolute -right-1 -top-1.5 z-10 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-destructive-foreground shadow-md ring-2 ring-background">
+          {meta.badge}
+        </span>
+      )}
+      <div
+        className={`grid place-items-center bg-gradient-to-br text-white shadow-md ring-1 ring-black/5 transition-shadow group-hover:shadow-lg ${iconShape === "circle" ? "rounded-full" : "rounded-2xl"} ${meta.gradient}`}
+        style={{ width: iconSize, height: iconSize }}
+      >
+        <CategoryIcon name={meta.iconName} className="h-1/2 w-1/2" />
+      </div>
+      <div
+        className="font-medium leading-tight text-foreground"
+        style={{ fontSize: `${labelPx}px` }}
+      >
+        {meta.label}
+      </div>
+    </button>
   );
 }

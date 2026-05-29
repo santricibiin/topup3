@@ -25,6 +25,7 @@ const UpdateSchema = z.object({
 const BulkSchema = z.object({
   iconSize: z.number().int().min(24).max(96).optional(),
   iconShape: z.enum(["rounded", "circle"]).optional(),
+  groupedLayout: z.boolean().optional(),
   categories: z.array(UpdateSchema).optional(),
 });
 
@@ -40,16 +41,18 @@ const ResetSchema = z.object({
 export const GET = apiHandler(async (req: NextRequest) => {
   await requireAdminApi(req);
 
-  const [items, iconSizeRaw, iconShapeRaw] = await Promise.all([
+  const [items, iconSizeRaw, iconShapeRaw, groupedRaw] = await Promise.all([
     categorySettingsService.getAll(),
     settingsService.get(SETTING_KEYS.TOPUP_ICON_SIZE),
     settingsService.get(SETTING_KEYS.TOPUP_ICON_SHAPE),
+    settingsService.get(SETTING_KEYS.TOPUP_GROUPED_LAYOUT),
   ]);
   const iconSize = Math.max(24, Math.min(96, Number(iconSizeRaw) || 56));
   const iconShape: "rounded" | "circle" =
     iconShapeRaw === "circle" ? "circle" : "rounded";
+  const groupedLayout = groupedRaw === "true";
 
-  return ok({ items, iconSize, iconShape });
+  return ok({ items, iconSize, iconShape, groupedLayout });
 });
 
 export const POST = apiHandler(async (req: NextRequest) => {
@@ -62,6 +65,12 @@ export const POST = apiHandler(async (req: NextRequest) => {
   }
   if (data.iconShape !== undefined) {
     await settingsService.set(SETTING_KEYS.TOPUP_ICON_SHAPE, data.iconShape);
+  }
+  if (data.groupedLayout !== undefined) {
+    await settingsService.set(
+      SETTING_KEYS.TOPUP_GROUPED_LAYOUT,
+      data.groupedLayout ? "true" : "false",
+    );
   }
 
   if (data.categories) {
@@ -81,6 +90,7 @@ export const POST = apiHandler(async (req: NextRequest) => {
     by: admin.id,
     iconSize: data.iconSize,
     iconShape: data.iconShape,
+    groupedLayout: data.groupedLayout,
     catCount: data.categories?.length ?? 0,
   });
 

@@ -17,6 +17,8 @@ import {
   Circle,
   Palette,
   Wand2,
+  LayoutGrid,
+  LayoutPanelTop,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +42,7 @@ interface Props {
   initialItems: CategoryRow[];
   initialIconSize: number;
   initialIconShape: IconShape;
+  initialGroupedLayout: boolean;
 }
 
 const PRESET_GRADIENTS = [
@@ -108,16 +111,19 @@ export function CategorySettingsForm({
   initialItems,
   initialIconSize,
   initialIconShape,
+  initialGroupedLayout,
 }: Props) {
   const router = useRouter();
   const [items, setItems] = useState<CategoryRow[]>(initialItems);
   const [iconSize, setIconSize] = useState(initialIconSize);
   const [iconShape, setIconShape] = useState<IconShape>(initialIconShape);
+  const [groupedLayout, setGroupedLayout] = useState(initialGroupedLayout);
   const [saving, setSaving] = useState(false);
 
   const dirty = useMemo(() => {
     if (iconSize !== initialIconSize) return true;
     if (iconShape !== initialIconShape) return true;
+    if (groupedLayout !== initialGroupedLayout) return true;
     if (items.length !== initialItems.length) return true;
     for (let i = 0; i < items.length; i++) {
       const a = items[i]!;
@@ -134,7 +140,7 @@ export function CategorySettingsForm({
       }
     }
     return false;
-  }, [items, iconSize, iconShape, initialItems, initialIconSize, initialIconShape]);
+  }, [items, iconSize, iconShape, groupedLayout, initialItems, initialIconSize, initialIconShape, initialGroupedLayout]);
 
   function patch(idx: number, partial: Partial<CategoryRow>) {
     setItems((prev) => {
@@ -162,6 +168,7 @@ export function CategorySettingsForm({
     setItems(initialItems);
     setIconSize(initialIconSize);
     setIconShape(initialIconShape);
+    setGroupedLayout(initialGroupedLayout);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -175,6 +182,7 @@ export function CategorySettingsForm({
         body: JSON.stringify({
           iconSize,
           iconShape,
+          groupedLayout,
           categories: items.map((c) => ({
             category: c.category,
             label: c.label,
@@ -256,6 +264,44 @@ export function CategorySettingsForm({
         </div>
         <p className="text-xs text-muted-foreground">
           Bentuk container icon kategori &mdash; box rounded atau lingkaran sempurna.
+        </p>
+      </div>
+
+      {/* Grouped layout toggle — box section seperti Pembelian/Pembayaran */}
+      <div className="space-y-2">
+        <Label>Tata Letak Kategori</Label>
+        <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-muted/40 p-1">
+          <button
+            type="button"
+            onClick={() => setGroupedLayout(false)}
+            className={cn(
+              "flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all",
+              !groupedLayout
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <LayoutGrid className="h-4 w-4" />
+            Grid Polos
+          </button>
+          <button
+            type="button"
+            onClick={() => setGroupedLayout(true)}
+            className={cn(
+              "flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all",
+              groupedLayout
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <LayoutPanelTop className="h-4 w-4" />
+            Box Section
+          </button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Box Section mengelompokkan kategori ke dalam kartu bertajuk (mis.
+          <em> Pembelian</em> &amp; <em>Pembayaran</em>) seperti aplikasi PPOB.
+          Grid Polos menampilkan semua kategori dalam satu grid.
         </p>
       </div>
 

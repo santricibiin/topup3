@@ -12,7 +12,7 @@ export const metadata = { title: "Topup" };
 export const dynamic = "force-dynamic";
 
 export default async function TopupCatalogPage() {
-  const [user, grouped, categoryMeta, iconSizeRaw, iconShapeRaw] = await Promise.all([
+  const [user, grouped, categoryMeta, iconSizeRaw, iconShapeRaw, groupedRaw] = await Promise.all([
     getCurrentUser(),
     prisma.product.groupBy({
       by: ["brand", "category"],
@@ -23,11 +23,13 @@ export default async function TopupCatalogPage() {
     categorySettingsService.getVisible(),
     settingsService.get(SETTING_KEYS.TOPUP_ICON_SIZE),
     settingsService.get(SETTING_KEYS.TOPUP_ICON_SHAPE),
+    settingsService.get(SETTING_KEYS.TOPUP_GROUPED_LAYOUT),
   ]);
 
   const iconSize = Math.max(24, Math.min(96, Number(iconSizeRaw) || 56));
   const iconShape: "rounded" | "circle" =
     iconShapeRaw === "circle" ? "circle" : "rounded";
+  const groupedLayout = groupedRaw === "true";
   const visibleSet = new Set(categoryMeta.map((c) => c.category));
 
   // Filter brand: hanya kategori yg visible.
@@ -112,6 +114,7 @@ export default async function TopupCatalogPage() {
               categoryMeta={categoryMeta}
               iconSize={iconSize}
               iconShape={iconShape}
+              groupedLayout={groupedLayout}
             />
           </div>
         </div>

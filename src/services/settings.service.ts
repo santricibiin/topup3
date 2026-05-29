@@ -40,6 +40,7 @@ export const SETTING_KEYS = {
   // Topup catalog UI
   TOPUP_ICON_SIZE: "topup.iconSize",           // 24-96 (px) — ukuran ikon kategori
   TOPUP_ICON_SHAPE: "topup.iconShape",         // "rounded" | "circle" — bentuk container
+  TOPUP_GROUPED_LAYOUT: "topup.groupedLayout", // "true" | "false" — grup kategori jadi box section (Pembelian/Pembayaran)
   // Backup
   BACKUP_ENABLED: "backup.enabled",            // "true" | "false" — auto-backup on/off
   BACKUP_INTERVAL: "backup.interval",          // "minutes" | "hours" | "days"
@@ -120,6 +121,8 @@ function envDefault(key: SettingKey): string {
       return "56";
     case SETTING_KEYS.TOPUP_ICON_SHAPE:
       return "rounded";
+    case SETTING_KEYS.TOPUP_GROUPED_LAYOUT:
+      return "false";
     case SETTING_KEYS.BACKUP_ENABLED:
       return "false";
     case SETTING_KEYS.BACKUP_INTERVAL:
