@@ -164,12 +164,40 @@ class WaSession {
     this.sock = null;
     this.qr = null; // raw QR string
     this.qrImage = null; // data:image/png;base64,...
-    /** @type {"DISCONNECTED"|"CONNECTING"|"QR_PENDING"|"CONNECTED"} */
+    /** @type {"DISCONNECTED"|"CONNECTING"|"QR_PENDING"|"PAIRING_PENDING"|"CONNECTED"} */
     this.status = "DISCONNECTED";
     this.lastError = null;
     this.connectedAt = null;
     this.connectedNumber = null;
     this.starting = false;
+    // Pairing code (Link with phone number) — alternatif QR yang jauh lebih
+    // stabil di VPS/IP datacenter (WhatsApp sering nolak QR dari datacenter).
+    this.pairPhone = null; // nomor 62xxx yang dipakai pairing
+    this.pairRequested = false; // sudah minta kode di sesi start ini?
+    this.pairingCode = null; // kode 8 karakter dari WhatsApp
+  }
+
+  /**
+   * Mulai sesi pakai PAIRING CODE (bukan QR). Tear-down socket lama dulu,
+   * set mode pairing, lalu start(). Kode di-request saat event qr pertama
+   * muncul (koneksi sudah cukup siap) — lihat connection.update handler.
+   */
+  async startPairing(phone62) {
+    if (this.status === "CONNECTED") {
+      throw new Error("Sesi sudah terhubung. Disconnect dulu.");
+    }
+    try {
+      this.sock?.end?.(undefined);
+    } catch {}
+    this.sock = null;
+    this.starting = false;
+    this.status = "DISCONNECTED";
+    this.qr = null;
+    this.qrImage = null;
+    this.pairPhone = phone62;
+    this.pairRequested = false;
+    this.pairingCode = null;
+    await this.start();
   }
 
   async start() {
@@ -199,6 +227,27 @@ class WaSession {
       this.sock.ev.on("connection.update", async (u) => {
         const { connection, lastDisconnect, qr } = u;
         if (qr) {
+          // Event `qr` muncul saat socket siap tapi belum ter-registrasi.
+          // Ini titik yang tepat untuk minta pairing code (kalau mode pairing).
+          if (this.pairPhone && !this.pairRequested) {
+            this.pairRequested = true;
+            try {
+              // requestPairingCode butuh nomor digit saja (tanpa + / spasi).
+              const code = await this.sock.requestPairingCode(this.pairPhone);
+              // Format biar gampang dibaca: "ABCD-EFGH"
+              this.pairingCode = code;
+              this.status = "PAIRING_PENDING";
+              this.qr = null;
+              this.qrImage = null;
+              logger.info({ phone: this.pairPhone }, "pairing.code.issued");
+            } catch (err) {
+              this.lastError = `Gagal minta pairing code: ${err?.message ?? err}`;
+              this.pairRequested = false;
+              logger.error({ err: String(err) }, "pairing.code.fail");
+            }
+            return;
+          }
+          // Mode QR biasa.
           this.qr = qr;
           this.qrImage = await QRCode.toDataURL(qr, { margin: 1, scale: 6 });
           this.status = "QR_PENDING";
@@ -238,6 +287,15 @@ class WaSession {
             const hasCreds = fs.existsSync(path.join(AUTH_DIR, "creds.json"));
             if (hasCreds) {
               setTimeout(() => this.start().catch(() => {}), 3000);
+            } else if (this.pairPhone) {
+              // Mode pairing & kode keburu expired sebelum dimasukin di HP.
+              // Stop, clear state, tunggu admin minta kode baru.
+              this.pairPhone = null;
+              this.pairRequested = false;
+              this.pairingCode = null;
+              this.lastError =
+                "Pairing code kadaluarsa. Masukkan nomor lagi untuk kode baru.";
+              logger.warn("pairing.expired.idle — menunggu request ulang");
             } else {
               this.lastError =
                 "QR kadaluarsa sebelum di-scan. Klik Connect untuk QR baru.";
@@ -250,6 +308,9 @@ class WaSession {
           this.qr = null;
           this.qrImage = null;
           this.lastError = null;
+          this.pairPhone = null;
+          this.pairRequested = false;
+          this.pairingCode = null;
           // sock.user = { id: "62xxx@s.whatsapp.net", name: "..." }
           const id = this.sock?.user?.id ?? "";
           this.connectedNumber = id.split(":")[0]?.split("@")[0] ?? null;
@@ -281,6 +342,9 @@ class WaSession {
     this.qrImage = null;
     this.connectedAt = null;
     this.connectedNumber = null;
+    this.pairPhone = null;
+    this.pairRequested = false;
+    this.pairingCode = null;
     await this.clearAuth();
   }
 
@@ -392,6 +456,8 @@ app.get("/api/v1/session/status", (_req, res) => {
         : null,
       lastError: wa.lastError,
       hasQr: Boolean(wa.qrImage),
+      pairingCode: wa.pairingCode,
+      pairPhone: wa.pairPhone,
     },
   });
 });
@@ -405,6 +471,39 @@ app.post("/api/v1/session/start", async (_req, res) => {
     res.json({ ok: true, status: wa.status });
   } catch (err) {
     res.status(500).json({ error: err?.message ?? "start failed" });
+  }
+});
+
+// Pairing code (Link with phone number) — alternatif QR. Lebih stabil di VPS
+// karena WhatsApp sering nolak pairing QR dari IP datacenter.
+app.post("/api/v1/session/pair", async (req, res) => {
+  try {
+    if (wa.status === "CONNECTED") {
+      return res.status(409).json({ error: "Sesi sudah terhubung." });
+    }
+    const phone62 = normalizePhone(req.body?.phone);
+    if (!phone62) {
+      return res
+        .status(400)
+        .json({ error: "Nomor tidak valid. Pakai format 08xx / 62xx." });
+    }
+    await wa.startPairing(phone62);
+    // Tunggu sampai kode keluar (event qr -> requestPairingCode). Max ~12 dtk.
+    for (let i = 0; i < 24; i++) {
+      if (wa.pairingCode) break;
+      if (wa.lastError && wa.pairRequested === false && wa.status === "DISCONNECTED") {
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    if (!wa.pairingCode) {
+      return res.status(504).json({
+        error: wa.lastError || "Pairing code belum keluar, coba lagi.",
+      });
+    }
+    res.json({ ok: true, pairingCode: wa.pairingCode, phone: phone62, status: wa.status });
+  } catch (err) {
+    res.status(500).json({ error: err?.message ?? "pair failed" });
   }
 });
 

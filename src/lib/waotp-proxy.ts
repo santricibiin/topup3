@@ -15,6 +15,7 @@ export async function callWorker(
   method: "GET" | "POST",
   path: string,
   body?: unknown,
+  timeoutMs = 10_000,
 ): Promise<{ status: number; data: unknown }> {
   const cfg = await settingsService.getWaOtpConfig();
   if (!cfg.apiKey) {
@@ -22,7 +23,7 @@ export async function callWorker(
   }
   const url = `${cfg.url}${path}`;
   const ac = new AbortController();
-  const timeout = setTimeout(() => ac.abort(), 10_000);
+  const timeout = setTimeout(() => ac.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       method,
