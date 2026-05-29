@@ -41,7 +41,14 @@ const {
 const PORT = Number(process.env.PORT) || 3002;
 const HOST = process.env.HOST || "127.0.0.1";
 const WORKER_KEY = process.env.WAOTP_WORKER_KEY || "";
-const AUTH_DIR = path.resolve(process.env.AUTH_DIR || "./auth");
+// AUTH_DIR di-anchor ke folder worker (../auth), BUKAN ke CWD. Penting:
+// saat redeploy/PM2 restart, CWD bisa berubah → path relatif "./auth" akan
+// menunjuk folder berbeda/kosong sehingga sesi WhatsApp hilang & QR baru
+// muncul (gejala "tidak dapat menautkan perangkat"). Path absolut tetap aman.
+const _authEnv = process.env.AUTH_DIR || "./auth";
+const AUTH_DIR = path.isAbsolute(_authEnv)
+  ? _authEnv
+  : path.resolve(__dirname, "..", _authEnv);
 const DEFAULT_OTP_LEN = Number(process.env.OTP_LENGTH) || 6;
 const DEFAULT_OTP_EXPIRES = Number(process.env.OTP_EXPIRES_SECONDS) || 300;
 const DEFAULT_OTP_MAX_ATTEMPTS = Number(process.env.OTP_MAX_ATTEMPTS) || 5;
@@ -58,6 +65,9 @@ const logger = pino({
   level: "info",
   transport: { target: "pino-pretty", options: { colorize: true } },
 }).child({ scope: "wa-worker" });
+
+// Log lokasi auth state biar gampang debug saat sesi "hilang" setelah deploy.
+logger.info({ authDir: AUTH_DIR, cwd: process.cwd() }, "config.authDir");
 
 // ============================================================
 // PHONE NORMALIZE — match logic di src/lib/phone.ts (sederhana)
