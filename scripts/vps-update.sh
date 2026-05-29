@@ -62,6 +62,57 @@ step "5/5 — Restart app"
 sudo -u $APP_USER pm2 restart ptopup
 ok "App restarted"
 
+# ============================================================
+# BONUS — WA OTP Worker (kalau folder wa-worker/ ada)
+# ============================================================
+WA_DIR="$APP_DIR/wa-worker"
+WA_ENV="$WA_DIR/.env"
+WA_KEY_FILE="/root/.ptopup-waotp-key"
+
+if [[ -d "$WA_DIR" ]]; then
+  step "BONUS — Update WA OTP Worker"
+
+  # Bikin .env kalau hilang (mis. user lupa atau file kebabakar)
+  if [[ ! -f "$WA_ENV" ]]; then
+    if [[ -f "$WA_KEY_FILE" ]]; then
+      WA_KEY=$(cat "$WA_KEY_FILE")
+      log "Re-using saved worker key"
+    else
+      WA_KEY=$(openssl rand -hex 32)
+      echo "$WA_KEY" > "$WA_KEY_FILE"
+      chmod 600 "$WA_KEY_FILE"
+      log "Generated new worker key"
+    fi
+    cat > "$WA_ENV" <<EOF
+PORT=3002
+HOST=127.0.0.1
+WAOTP_WORKER_KEY=$WA_KEY
+AUTH_DIR=./auth
+OTP_LENGTH=6
+OTP_EXPIRES_SECONDS=300
+OTP_MAX_ATTEMPTS=5
+EOF
+    chown $APP_USER:$APP_USER "$WA_ENV"
+    chmod 600 "$WA_ENV"
+    ok "wa-worker/.env recreated"
+  fi
+
+  mkdir -p "$WA_DIR/auth"
+  chown -R $APP_USER:$APP_USER "$WA_DIR"
+
+  log "Update wa-worker dependencies..."
+  sudo -u $APP_USER bash -c "cd $WA_DIR && npm install --no-audit --no-fund --omit=dev" 2>&1 | tail -3
+
+  if sudo -u $APP_USER pm2 describe wa-worker >/dev/null 2>&1; then
+    sudo -u $APP_USER pm2 restart wa-worker --update-env
+    ok "PM2 'wa-worker' restarted"
+  else
+    sudo -u $APP_USER bash -c "cd $WA_DIR && pm2 start src/index.js --name wa-worker --time"
+    ok "PM2 'wa-worker' started"
+  fi
+  sudo -u $APP_USER pm2 save >/dev/null 2>&1 || true
+fi
+
 echo ""
 echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
 echo -e "${GREEN}✅ Update selesai${NC}"

@@ -55,6 +55,7 @@ APP_USER="ptopup"
 DB_NAME="ptopup"
 DB_USER="ptopup"
 DB_PASS_FILE="/root/.ptopup-db-password"
+WA_KEY_FILE="/root/.ptopup-waotp-key"
 
 echo -e "${YELLOW}╔════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${YELLOW}║${NC}  PTopup VPS Cleanup                                        ${YELLOW}║${NC}"
@@ -80,6 +81,7 @@ step "1/6 — Stop PM2 process & free port 3000"
 pm2 kill 2>/dev/null || true
 if id "$APP_USER" >/dev/null 2>&1; then
   sudo -u $APP_USER pm2 delete ptopup 2>/dev/null || true
+  sudo -u $APP_USER pm2 delete wa-worker 2>/dev/null || true
   sudo -u $APP_USER pm2 kill 2>/dev/null || true
 fi
 
@@ -88,6 +90,7 @@ pkill -9 -f "next start" 2>/dev/null || true
 pkill -9 -f "next-server" 2>/dev/null || true
 pkill -9 -f "PM2" 2>/dev/null || true
 pkill -9 -f "/opt/ptopup" 2>/dev/null || true
+pkill -9 -f "wa-worker/src/index.js" 2>/dev/null || true
 if id "$APP_USER" >/dev/null 2>&1; then
   pkill -9 -u "$APP_USER" 2>/dev/null || true
 fi
@@ -95,6 +98,7 @@ fi
 # 1c. Force release port 3000 (apapun yg pakai)
 fuser -k 3000/tcp 2>/dev/null || true
 fuser -k 3001/tcp 2>/dev/null || true
+fuser -k 3002/tcp 2>/dev/null || true
 
 sleep 2
 
@@ -157,6 +161,7 @@ fi
 
 # Hapus file password
 [[ -f "$DB_PASS_FILE" ]] && rm -f "$DB_PASS_FILE" && ok "Removed $DB_PASS_FILE"
+[[ -f "$WA_KEY_FILE" ]] && rm -f "$WA_KEY_FILE" && ok "Removed $WA_KEY_FILE"
 
 # ============================================================
 # 4. Hapus Nginx config

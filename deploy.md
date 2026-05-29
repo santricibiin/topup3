@@ -56,9 +56,29 @@ curl -fsSL "https://raw.githubusercontent.com/santricibiin/topup2/main/scripts/v
   DB User      : ptopup
   DB Password  : a13e3822921e3a4bb2702fb74536b6f8....   ← INI PASSWORD MYSQL KAMU
   Password File: /root/.ptopup-db-password
+
+═══ WA OTP WORKER ═══
+  Status       : running (PM2 process 'wa-worker')
+  URL          : http://127.0.0.1:3002/api/v1
+  API Key      : <auto-generate 64 char>
+  Key file     : /root/.ptopup-waotp-key
+  Auth folder  : /opt/ptopup/wa-worker/auth
 ```
 
 📸 **Screenshot/catat password-nya** kalau kamu butuh nanti. Kalau lupa, masih bisa diliat lagi (lihat section MySQL di bawah).
+
+### 📱 Aktifin WA Gateway (setelah deploy)
+
+Worker udah jalan otomatis di port 3002, URL & API Key juga udah disync ke DB. Tinggal:
+
+1. Login admin → buka `/admin/settings` → tab **WhatsApp**
+2. Toggle **Enabled** → klik **Save**
+3. Buka `/admin` → bagian **OTP WhatsApp** → klik **Connect** → scan QR pakai HP
+
+Selesai, status sesi bakal `CONNECTED`. Kalau API Key di settings kosong, fetch lagi:
+```bash
+sudo cat /root/.ptopup-waotp-key
+```
 
 ---
 
