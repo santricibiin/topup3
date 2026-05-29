@@ -11,6 +11,7 @@ import {
   Settings,
   Wallet,
   Database,
+  MessageCircle,
   ArrowLeft,
   PanelLeftClose,
   PanelLeftOpen,
@@ -30,6 +31,7 @@ const NAV = [
   { href: "/admin/deposits", label: "Deposit", icon: Wallet },
   { href: "/admin/users", label: "Pengguna", icon: Users },
   { href: "/admin/provider", label: "Provider", icon: Plug },
+  { href: "/admin/waotp", label: "Konfigurasi OTP", icon: MessageCircle },
   { href: "/admin/backup", label: "Backup", icon: Database },
   { href: "/admin/settings", label: "Pengaturan", icon: Settings },
 ] as const;

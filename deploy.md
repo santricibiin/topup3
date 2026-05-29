@@ -71,9 +71,9 @@ curl -fsSL "https://raw.githubusercontent.com/santricibiin/topup2/main/scripts/v
 
 Worker udah jalan otomatis di port 3002, URL & API Key juga udah disync ke DB. Tinggal:
 
-1. Login admin → buka `/admin/settings` → tab **WhatsApp**
-2. Toggle **Enabled** → klik **Save**
-3. Buka `/admin` → bagian **OTP WhatsApp** → klik **Connect** → scan QR pakai HP
+1. Login admin → buka menu **Konfigurasi OTP** di sidebar (path `/admin/waotp`)
+2. Toggle **Aktifkan OTP WhatsApp** → klik **Save**
+3. Di section **Sesi WhatsApp** → klik **Connect** → scan QR pakai HP
 
 Selesai, status sesi bakal `CONNECTED`. Kalau API Key di settings kosong, fetch lagi:
 ```bash

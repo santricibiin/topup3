@@ -2,15 +2,12 @@ import {
   Settings as SettingsIcon,
   Globe,
   LayoutGrid,
-  MessageCircle,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { settingsService, SETTING_KEYS } from "@/services/settings.service";
 import { categorySettingsService } from "@/services/category-settings.service";
 import { SiteSettingsForm } from "@/features/admin/components/site-settings-form";
 import { CategorySettingsForm } from "@/features/admin/components/category-settings-form";
-import { WaOtpSettingsForm } from "@/features/admin/components/waotp-settings-form";
-import { WaSessionPanel } from "@/features/admin/components/wa-session-panel";
 
 export const metadata = { title: "Admin · Pengaturan" };
 export const dynamic = "force-dynamic";
@@ -80,26 +77,6 @@ export default async function AdminSettingsPage() {
               initialIconSize={iconSize}
               initialIconShape={iconShape}
             />
-          </CardContent>
-        </Card>
-
-        {/* SECTION: WhatsApp OTP Gateway */}
-        <Card>
-          <SectionHeader
-            icon={MessageCircle}
-            title="OTP WhatsApp"
-            description="Gateway untuk verifikasi nomor & reset password via WhatsApp. Default off — aktifkan setelah set URL & API key."
-          />
-          <CardContent className="space-y-6 p-5 md:p-6">
-            <div className="space-y-3">
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Sesi WhatsApp
-              </div>
-              <WaSessionPanel />
-            </div>
-            <div className="border-t border-border/60 pt-6">
-              <WaOtpSettingsForm />
-            </div>
           </CardContent>
         </Card>
       </div>
