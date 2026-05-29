@@ -210,18 +210,39 @@ class WaSession {
               ? lastDisconnect.error.output?.statusCode
               : 0;
           const loggedOut = code === DisconnectReason.loggedOut;
+          const restartRequired = code === DisconnectReason.restartRequired;
           this.status = "DISCONNECTED";
           this.lastError = lastDisconnect?.error?.message ?? "closed";
           this.qr = null;
           this.qrImage = null;
-          logger.warn({ code, loggedOut, err: this.lastError }, "connection.close");
-          if (!loggedOut) {
-            // Auto-reconnect dengan delay kecil.
-            setTimeout(() => this.start().catch(() => {}), 3000);
-          } else {
+          logger.warn(
+            { code, loggedOut, restartRequired, err: this.lastError },
+            "connection.close",
+          );
+          if (loggedOut) {
             // Logged out — auth state tidak valid lagi, hapus folder
             // supaya next start mulai fresh dengan QR baru.
             await this.clearAuth().catch(() => {});
+          } else if (restartRequired) {
+            // 515 restart-required: normal di tengah proses pairing (tepat
+            // setelah QR di-scan). Reconnect cepat untuk melanjutkan.
+            setTimeout(() => this.start().catch(() => {}), 1000);
+          } else {
+            // Close lain — termasuk 408 "QR refs attempts ended" = QR keburu
+            // expired sebelum di-scan. HANYA auto-reconnect kalau memang ada
+            // sesi tersimpan (creds.json): itu berarti koneksi nyata yang
+            // putus (network blip). Kalau BELUM ada sesi, STOP & tunggu admin
+            // klik Connect lagi — jangan loop bikin QR di background. Loop ini
+            // biang "QR gak bisa di-scan": socket keburu di-teardown sebelum
+            // QR kebaca HP, dan QR di panel jadi milik socket yang udah mati.
+            const hasCreds = fs.existsSync(path.join(AUTH_DIR, "creds.json"));
+            if (hasCreds) {
+              setTimeout(() => this.start().catch(() => {}), 3000);
+            } else {
+              this.lastError =
+                "QR kadaluarsa sebelum di-scan. Klik Connect untuk QR baru.";
+              logger.warn("qr.expired.idle — menunggu admin klik Connect");
+            }
           }
         } else if (connection === "open") {
           this.status = "CONNECTED";
@@ -283,13 +304,18 @@ class WaSession {
 }
 
 const wa = new WaSession();
-// Auto-start saat boot kalau auth state existing.
-fs.promises
-  .stat(AUTH_DIR)
-  .then(() => wa.start().catch(() => {}))
-  .catch(() => {
-    /* folder belum ada, biarkan admin trigger manual */
-  });
+// Auto-start saat boot HANYA kalau ada sesi tersimpan (creds.json), BUKAN
+// sekadar folder auth ada. Penting: deploy script bikin folder auth/ kosong,
+// jadi cek folder doang bikin worker auto-start tanpa sesi → loop bikin QR di
+// background → 408 "QR refs attempts ended" → QR di panel jadi basi & gak bisa
+// di-scan. Dengan cek creds.json, worker yang belum login akan diam menunggu
+// admin klik Connect (QR baru fresh, langsung scannable).
+if (fs.existsSync(path.join(AUTH_DIR, "creds.json"))) {
+  logger.info("boot.autostart — sesi tersimpan ditemukan, reconnecting");
+  wa.start().catch(() => {});
+} else {
+  logger.info("boot.idle — belum ada sesi, menunggu admin klik Connect");
+}
 
 // ============================================================
 // HELPERS — template render
